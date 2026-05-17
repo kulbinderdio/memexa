@@ -2630,6 +2630,7 @@ let _statusPoller = null;
 async function checkModelStatus() {
   try {
     const res = await fetch('/api/status');
+    if (!res.ok) return; // endpoint not available yet (old container), skip silently
     const data = await res.json();
     const banner = document.getElementById('model-banner');
     const txt = document.getElementById('model-banner-text');
