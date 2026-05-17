@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import os
 import socket
 import sys
 import uuid
@@ -669,6 +670,36 @@ async def delete_feed_entry(entry_id: int) -> Response:
 async def clear_feed() -> Response:
     await clear_log()
     return Response(status_code=204)
+
+
+# ---------------------------------------------------------------------------
+# Routes: status
+# ---------------------------------------------------------------------------
+
+@app.get("/api/status")
+async def get_status() -> JSONResponse:
+    """Check whether the configured LLM models are available."""
+    settings = await database.get_settings()
+    provider = settings.get("llm_provider", "ollama")
+
+    if provider != "ollama":
+        return JSONResponse({"ready": True, "provider": provider})
+
+    base_url = settings.get("ollama_base_url") or os.environ.get("OLLAMA_BASE_URL") or "http://localhost:11434"
+    chat_model = settings.get("ollama_chat_model") or "gemma4"
+    embed_model = settings.get("ollama_embed_model") or "mxbai-embed-large"
+
+    try:
+        import httpx
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.get(f"{base_url.rstrip('/')}/api/tags")
+            resp.raise_for_status()
+            available = {m["name"].split(":")[0] for m in resp.json().get("models", [])}
+    except Exception:
+        return JSONResponse({"ready": False, "provider": "ollama", "missing_models": [chat_model, embed_model], "ollama_reachable": False})
+
+    missing = [m for m in [chat_model, embed_model] if m.split(":")[0] not in available]
+    return JSONResponse({"ready": not missing, "provider": "ollama", "missing_models": missing, "ollama_reachable": True})
 
 
 # ---------------------------------------------------------------------------

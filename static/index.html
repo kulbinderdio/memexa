@@ -1450,6 +1450,13 @@ button:disabled { opacity: .45; cursor: not-allowed; }
   </div>
 </aside>
 
+<!-- ── Model download banner ────────────────────────────────────────────── -->
+<div id="model-banner" style="display:none;position:fixed;top:0;left:0;right:0;z-index:9999;background:#92400e;color:#fef3c7;padding:10px 20px;font-size:13px;align-items:center;gap:10px;justify-content:center;">
+  <span style="font-size:16px">⏳</span>
+  <span id="model-banner-text">Downloading AI models for the first time — this may take a few minutes. Ingestion will start automatically once complete.</span>
+  <span id="model-banner-spinner" style="display:inline-block;width:12px;height:12px;border:2px solid #fef3c7;border-top-color:transparent;border-radius:50%;animation:spin 0.8s linear infinite;flex-shrink:0"></span>
+</div>
+
 <!-- ── Main ─────────────────────────────────────────────────────────────── -->
 <div id="main">
 
@@ -2617,10 +2624,45 @@ function relTime(ts) {
   return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
 }
 
+// ── Model readiness banner ─────────────────────────────────────────────────
+let _statusPoller = null;
+
+async function checkModelStatus() {
+  try {
+    const res = await fetch('/api/status');
+    const data = await res.json();
+    const banner = document.getElementById('model-banner');
+    const txt = document.getElementById('model-banner-text');
+    if (data.ready) {
+      banner.style.display = 'none';
+      document.getElementById('main').style.paddingTop = '';
+      document.querySelector('aside').style.paddingTop = '';
+      if (_statusPoller) { clearInterval(_statusPoller); _statusPoller = null; }
+    } else if (!data.ollama_reachable) {
+      banner.style.display = 'flex';
+      txt.textContent = 'Cannot reach Ollama — check that Docker is running and the containers are healthy.';
+      applyBannerOffset();
+    } else {
+      const missing = (data.missing_models || []).join(', ');
+      banner.style.display = 'flex';
+      txt.textContent = `Downloading AI models (${missing}) — this may take several minutes on first run. Ingestion will start automatically once complete.`;
+      applyBannerOffset();
+    }
+  } catch (_) { /* server not yet ready, ignore */ }
+}
+
+function applyBannerOffset() {
+  const h = document.getElementById('model-banner').offsetHeight + 'px';
+  document.getElementById('main').style.paddingTop = h;
+  document.querySelector('aside').style.paddingTop = h;
+}
+
 // ── Init ───────────────────────────────────────────────────────────────────
 loadLibrary();
 connectSSE();
 setInterval(loadLibrary, 30000);
+checkModelStatus();
+_statusPoller = setInterval(checkModelStatus, 10000);
 </script>
 </body>
 </html>
