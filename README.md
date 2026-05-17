@@ -7,6 +7,8 @@
 > **Your knowledge, connected.**
 
 ---
+<img width="1384" height="927" alt="image" src="https://github.com/user-attachments/assets/82e73519-9345-4e5a-b7e0-77665287bcf1" />
+
 
 ## The story
 
