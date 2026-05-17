@@ -82,11 +82,11 @@ class OllamaProvider(LLMProvider):
     async def embed(self, text: str) -> list[float]:
         async with httpx.AsyncClient(timeout=60.0) as client:
             resp = await client.post(
-                f"{self.base_url}/api/embeddings",
-                json={"model": self.embed_model, "prompt": text},
+                f"{self.base_url}/api/embed",
+                json={"model": self.embed_model, "input": text},
             )
             resp.raise_for_status()
-            return resp.json()["embedding"]
+            return resp.json()["embeddings"][0]
 
     async def chat(self, messages: list[dict[str, str]]) -> str:
         async with httpx.AsyncClient(timeout=120.0) as client:
