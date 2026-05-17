@@ -172,16 +172,15 @@ cd memexa-web
 docker compose up -d
 ```
 
-The first run takes a few minutes — the `ollama-pull` service downloads `mxbai-embed-large` (~670 MB) and `gemma3:4b` (~3.3 GB). Subsequent starts are instant.
+The first run downloads `mxbai-embed-large` (~670 MB) and `gemma3:4b` (~2.5 GB) automatically in the background. A banner in the UI shows live download progress and dismisses itself once both models are ready.
 
-Watch progress:
+Watch server logs if you prefer the terminal:
 
 ```bash
-docker compose logs -f ollama-pull   # model download progress
-docker compose logs -f memexa        # app startup
+docker compose logs -f memexa
 ```
 
-Open **http://localhost:7700** once you see `Application startup complete` in the memexa logs.
+Open **http://localhost:7700** straight away — the banner will keep you informed while models download.
 
 #### 2. Set up Telegram (optional but recommended)
 
@@ -270,9 +269,9 @@ deploy:
 Check that Ollama is healthy: `docker compose ps` — the `ollama` service should show `healthy`. If it shows `starting`, wait 20–30 seconds and refresh.
 
 **Models not found / embedding errors**
-The `ollama-pull` service only runs once at first start. To re-run it:
+The app pulls missing models automatically on startup. Check the banner in the UI or run:
 ```bash
-docker compose run --rm ollama-pull
+docker compose logs -f memexa
 ```
 
 **Port 7700 already in use**

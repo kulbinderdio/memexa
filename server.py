@@ -13,6 +13,8 @@ import os
 import socket
 import sys
 import uuid
+
+import httpx
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import AsyncGenerator
@@ -322,6 +324,63 @@ async def _on_telegram_url(url: str) -> None:
 telegram_poller = TelegramPoller(on_url_found=_on_telegram_url)
 
 # ---------------------------------------------------------------------------
+# Model auto-pull
+# ---------------------------------------------------------------------------
+
+# { model_name: {"status": "downloading"|"done"|"error", "pct": 0-100} }
+_pull_status: dict[str, dict] = {}
+
+
+async def _pull_model(base_url: str, model: str) -> None:
+    _pull_status[model] = {"status": "downloading", "pct": 0}
+    for attempt in range(5):
+        try:
+            async with httpx.AsyncClient(timeout=None) as client:
+                async with client.stream(
+                    "POST",
+                    f"{base_url.rstrip('/')}/api/pull",
+                    json={"name": model, "stream": True},
+                ) as resp:
+                    async for line in resp.aiter_lines():
+                        if not line:
+                            continue
+                        data = json.loads(line)
+                        if data.get("status") == "success":
+                            _pull_status[model] = {"status": "done", "pct": 100}
+                            return
+                        total = data.get("total", 0)
+                        completed = data.get("completed", 0)
+                        if total:
+                            _pull_status[model]["pct"] = int(completed / total * 100)
+        except Exception:
+            pass
+        if _pull_status[model].get("status") == "done":
+            return
+        await asyncio.sleep(10)
+    _pull_status[model] = {"status": "error", "pct": 0}
+
+
+async def _auto_pull_missing_models() -> None:
+    await asyncio.sleep(5)  # let Ollama finish starting
+    settings = await database.get_settings()
+    base_url = os.environ.get("OLLAMA_BASE_URL") or settings.get("ollama_base_url") or "http://localhost:11434"
+    chat_model = settings.get("ollama_chat_model") or "gemma3:4b"
+    embed_model = settings.get("ollama_embed_model") or "mxbai-embed-large"
+
+    for attempt in range(12):  # wait up to 60s for Ollama to become reachable
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                resp = await client.get(f"{base_url.rstrip('/')}/api/tags")
+                available = {m["name"].split(":")[0] for m in resp.json().get("models", [])}
+                missing = [m for m in [embed_model, chat_model] if m.split(":")[0] not in available]
+                if missing:
+                    await asyncio.gather(*[_pull_model(base_url, m) for m in missing])
+                return
+        except Exception:
+            await asyncio.sleep(5)
+
+
+# ---------------------------------------------------------------------------
 # Lifespan
 # ---------------------------------------------------------------------------
 
@@ -330,6 +389,7 @@ telegram_poller = TelegramPoller(on_url_found=_on_telegram_url)
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     await init_db()
     asyncio.create_task(ingestion_worker(), name="ingestion-worker")
+    asyncio.create_task(_auto_pull_missing_models(), name="model-puller")
 
     settings = await database.get_settings()
     token = settings.get("telegram_bot_token", "").strip()
@@ -690,16 +750,15 @@ async def get_status() -> JSONResponse:
     embed_model = settings.get("ollama_embed_model") or "mxbai-embed-large"
 
     try:
-        import httpx
         async with httpx.AsyncClient(timeout=5.0) as client:
             resp = await client.get(f"{base_url.rstrip('/')}/api/tags")
             resp.raise_for_status()
             available = {m["name"].split(":")[0] for m in resp.json().get("models", [])}
     except Exception:
-        return JSONResponse({"ready": False, "provider": "ollama", "missing_models": [chat_model, embed_model], "ollama_reachable": False})
+        return JSONResponse({"ready": False, "provider": "ollama", "missing_models": [chat_model, embed_model], "ollama_reachable": False, "pulling": _pull_status})
 
     missing = [m for m in [chat_model, embed_model] if m.split(":")[0] not in available]
-    return JSONResponse({"ready": not missing, "provider": "ollama", "missing_models": missing, "ollama_reachable": True})
+    return JSONResponse({"ready": not missing, "provider": "ollama", "missing_models": missing, "ollama_reachable": True, "pulling": _pull_status})
 
 
 # ---------------------------------------------------------------------------
