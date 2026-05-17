@@ -1,0 +1,2626 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Memexa</title>
+<link rel="icon" type="image/png" sizes="32x32" href="/static/icon-32.png">
+<link rel="icon" type="image/png" sizes="256x256" href="/static/icon-256.png">
+<style>
+/* ── Reset & base ────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:          #f5f4f2;
+  --surface:     #ffffff;
+  --surface-2:   #f0efed;
+  --surface-3:   #e8e7e4;
+  --border:      #e2e0dc;
+  --border-2:    #d0cdc8;
+  --text:        #1a1917;
+  --text-2:      #6b6860;
+  --text-3:      #9e9b96;
+  --accent:      #5b3ff8;
+  --accent-2:    #7c61fa;
+  --accent-bg:   #ede9ff;
+  --accent-dim:  rgba(91,63,248,.12);
+  --orange:      #e86f2c;
+  --orange-bg:   #fff1e8;
+  --teal:        #0d8f8f;
+  --teal-bg:     #e4f7f7;
+  --green:       #1e9449;
+  --green-bg:    #e6f7ec;
+  --red:         #d12b2b;
+  --red-bg:      #fce8e8;
+  --amber:       #c47a10;
+  --amber-bg:    #fef6e4;
+  --purple:      #7c3aed;
+  --purple-bg:   #f3edff;
+  --shadow-sm:   0 1px 2px rgba(0,0,0,.06), 0 1px 3px rgba(0,0,0,.04);
+  --shadow:      0 2px 8px rgba(0,0,0,.08), 0 1px 3px rgba(0,0,0,.04);
+  --shadow-lg:   0 8px 24px rgba(0,0,0,.10), 0 2px 8px rgba(0,0,0,.06);
+  --radius-sm:   6px;
+  --radius:      10px;
+  --radius-lg:   16px;
+  --sidebar-w:   228px;
+  --list-w:      310px;
+  --transition:  .18s cubic-bezier(.4,0,.2,1);
+  --font:        -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --font-mono:   'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg:         #111110;
+    --surface:    #1c1b1a;
+    --surface-2:  #232220;
+    --surface-3:  #2d2c2a;
+    --border:     #2d2c2a;
+    --border-2:   #3d3c39;
+    --text:       #f0eeeb;
+    --text-2:     #9e9b96;
+    --text-3:     #6b6860;
+    --accent:     #7c61fa;
+    --accent-2:   #9b82fb;
+    --accent-bg:  #1e1a3a;
+    --accent-dim: rgba(124,97,250,.15);
+    --orange:     #f07e3f;
+    --orange-bg:  #281a0e;
+    --teal:       #21b5b5;
+    --teal-bg:    #0c2424;
+    --green:      #3ab46a;
+    --green-bg:   #0e2218;
+    --red:        #e05252;
+    --red-bg:     #280e0e;
+    --amber:      #d4921e;
+    --amber-bg:   #241a08;
+    --purple:     #a78bfa;
+    --purple-bg:  #1e1430;
+    --shadow-sm:  0 1px 2px rgba(0,0,0,.3);
+    --shadow:     0 2px 8px rgba(0,0,0,.4);
+    --shadow-lg:  0 8px 24px rgba(0,0,0,.5);
+  }
+}
+
+html, body { height: 100%; overflow: hidden; }
+
+body {
+  font-family: var(--font);
+  font-size: 14px;
+  line-height: 1.5;
+  background: var(--bg);
+  color: var(--text);
+  display: flex;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+input, textarea, button, select {
+  font-family: var(--font);
+  font-size: 14px;
+}
+
+button { cursor: pointer; border: none; background: none; }
+button:disabled { opacity: .45; cursor: not-allowed; }
+
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 99px; }
+
+/* ── Sidebar ─────────────────────────────────────────────────────────────── */
+#sidebar {
+  width: var(--sidebar-w);
+  flex-shrink: 0;
+  height: 100vh;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  overflow: hidden;
+  transition: transform var(--transition);
+  z-index: 20;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 20px 16px 16px;
+  flex-shrink: 0;
+}
+
+.brand-mark {
+  width: 72px;
+  height: 72px;
+  border-radius: 14px;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+.brand-mark img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.brand-name {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.4px;
+  color: var(--text);
+}
+
+.nav {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 8px 8px;
+}
+
+.nav-section-label {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  padding: 10px 8px 4px;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 9px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  color: var(--text-2);
+  font-size: 13.5px;
+  font-weight: 500;
+  user-select: none;
+  transition: background var(--transition), color var(--transition);
+  position: relative;
+}
+
+.nav-item:hover { background: var(--surface-2); color: var(--text); }
+
+.nav-item.active {
+  background: var(--accent-dim);
+  color: var(--accent);
+}
+
+.nav-icon {
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.nav-badge {
+  margin-left: auto;
+  background: var(--surface-3);
+  color: var(--text-2);
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 99px;
+  min-width: 20px;
+  text-align: center;
+}
+
+.nav-item.active .nav-badge { background: var(--accent-bg); color: var(--accent); }
+
+.sidebar-footer {
+  padding: 8px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 4px;
+}
+
+.sidebar-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px;
+  border-radius: var(--radius-sm);
+  color: var(--text-2);
+  font-size: 12.5px;
+  font-weight: 500;
+  transition: background var(--transition), color var(--transition);
+}
+
+.sidebar-btn:hover { background: var(--surface-2); color: var(--text); }
+
+/* ── Main content area ───────────────────────────────────────────────────── */
+#main {
+  flex: 1;
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+/* ── Views ───────────────────────────────────────────────────────────────── */
+.view {
+  display: none;
+  flex: 1;
+  overflow: hidden;
+  flex-direction: column;
+  animation: fadeIn .15s ease;
+}
+.view.active { display: flex; }
+
+@keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+/* ── Split pane ──────────────────────────────────────────────────────────── */
+.split {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.pane-list {
+  width: var(--list-w);
+  flex-shrink: 0;
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+}
+
+.pane-detail {
+  flex: 1;
+  overflow-y: auto;
+  background: var(--bg);
+}
+
+/* ── View topbar ─────────────────────────────────────────────────────────── */
+.topbar {
+  height: 52px;
+  flex-shrink: 0;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 18px;
+  gap: 12px;
+}
+
+.topbar-title {
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: -0.2px;
+}
+
+.topbar-sub {
+  font-size: 12.5px;
+  color: var(--text-3);
+  margin-left: auto;
+}
+
+/* ── Item cards ──────────────────────────────────────────────────────────── */
+.item-card {
+  padding: 13px 16px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background var(--transition);
+  position: relative;
+}
+
+.item-card:hover { background: var(--surface-2); }
+
+.item-card.selected {
+  background: var(--accent-dim);
+}
+
+.item-card.selected::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: var(--accent);
+  border-radius: 0 2px 2px 0;
+}
+
+.card-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.4;
+  margin-bottom: 3px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.card-host {
+  font-size: 11px;
+  color: var(--text-3);
+  margin-bottom: 5px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.unread-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex-shrink: 0;
+}
+
+.card-summary {
+  font-size: 12px;
+  color: var(--text-2);
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin-bottom: 7px;
+}
+
+.card-footer {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.card-time {
+  font-size: 11px;
+  color: var(--text-3);
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+/* ── Tags ────────────────────────────────────────────────────────────────── */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  background: var(--surface-3);
+  color: var(--text-2);
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  border: 1px solid var(--border);
+}
+
+/* ── Status badges ───────────────────────────────────────────────────────── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+}
+.badge-unread   { background: var(--accent-bg); color: var(--accent); }
+.badge-read     { background: var(--surface-3); color: var(--text-3); }
+.badge-success  { background: var(--green-bg);  color: var(--green);  }
+.badge-failed   { background: var(--red-bg);    color: var(--red);    }
+.badge-duplicate{ background: var(--surface-3); color: var(--text-3); }
+.badge-skipped  { background: var(--surface-3); color: var(--text-3); }
+
+/* ── Detail panel ────────────────────────────────────────────────────────── */
+.detail-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  height: 100%;
+  gap: 10px;
+  color: var(--text-3);
+  padding: 40px;
+}
+
+.detail-empty-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-lg);
+  background: var(--surface-3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  margin-bottom: 4px;
+}
+
+.detail-empty-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-2);
+}
+
+.detail-empty-sub { font-size: 13px; text-align: center; max-width: 220px; }
+
+.detail-body {
+  padding: 28px 32px 48px;
+  max-width: 740px;
+}
+
+.detail-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+
+.detail-domain {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--text-3);
+  background: var(--surface-3);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 3px 9px;
+  transition: color var(--transition);
+}
+.detail-domain:hover { color: var(--accent); text-decoration: none; }
+
+.detail-title {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  line-height: 1.3;
+  margin-bottom: 10px;
+  color: var(--text);
+}
+
+.detail-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.detail-meta-item {
+  font-size: 12px;
+  color: var(--text-3);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.detail-actions {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+
+.summary-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--orange);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  margin-bottom: 22px;
+}
+
+.summary-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--orange);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.summary-text {
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--text);
+}
+
+.tags-row {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+}
+
+.content-section { }
+
+.content-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.content-body {
+  font-size: 15px;
+  line-height: 1.8;
+  color: var(--text);
+}
+
+.content-body p { margin-bottom: 0.9em; }
+.content-body p:last-child { margin-bottom: 0; }
+
+/* ── Buttons ─────────────────────────────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 500;
+  transition: all var(--transition);
+  white-space: nowrap;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: white;
+  box-shadow: 0 1px 3px rgba(91,63,248,.3);
+}
+.btn-primary:hover { background: var(--accent-2); box-shadow: 0 2px 6px rgba(91,63,248,.4); }
+
+.btn-ghost {
+  background: var(--surface-2);
+  color: var(--text-2);
+  border: 1px solid var(--border);
+}
+.btn-ghost:hover { background: var(--surface-3); color: var(--text); }
+
+.btn-danger {
+  background: var(--red-bg);
+  color: var(--red);
+  border: 1px solid rgba(209,43,43,.2);
+}
+.btn-danger:hover { background: var(--red); color: white; }
+
+.btn-sm { padding: 5px 10px; font-size: 12px; }
+
+/* ── Text input ──────────────────────────────────────────────────────────── */
+.text-input {
+  width: 100%;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 9px 13px;
+  color: var(--text);
+  outline: none;
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+.text-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-dim);
+}
+
+.text-input::placeholder { color: var(--text-3); }
+
+/* ── Search view ─────────────────────────────────────────────────────────── */
+.search-topbar {
+  padding: 12px 16px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.search-wrap {
+  flex: 1;
+  position: relative;
+}
+
+.search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-3);
+  font-size: 14px;
+  pointer-events: none;
+}
+
+.search-input {
+  width: 100%;
+  background: var(--surface-2);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 9px 13px 9px 36px;
+  color: var(--text);
+  outline: none;
+  transition: all var(--transition);
+}
+
+.search-input:focus {
+  background: var(--surface);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-dim);
+}
+
+.search-input::placeholder { color: var(--text-3); }
+
+.score-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  border-radius: 99px;
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Synthesise view ─────────────────────────────────────────────────────── */
+#view-synthesise {
+  display: none;
+  flex-direction: column;
+}
+#view-synthesise.active { display: flex; }
+
+.synth-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0;
+}
+
+.synth-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 52px 32px 28px;
+  text-align: center;
+}
+
+.synth-hero-icon {
+  width: 60px;
+  height: 60px;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(135deg, var(--orange-bg) 0%, var(--amber-bg) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+  margin-bottom: 18px;
+  border: 1px solid rgba(232,111,44,.2);
+}
+
+.synth-hero-title {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.4px;
+  margin-bottom: 6px;
+}
+
+.synth-hero-sub { font-size: 14px; color: var(--text-2); max-width: 320px; }
+
+.synth-suggestions {
+  padding: 0 32px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 600px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.suggestion-chip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  cursor: pointer;
+  text-align: left;
+  color: var(--text);
+  font-size: 13.5px;
+  transition: all var(--transition);
+}
+
+.suggestion-chip:hover {
+  border-color: var(--accent);
+  background: var(--accent-dim);
+  color: var(--accent);
+}
+
+.suggestion-arrow { font-size: 16px; flex-shrink: 0; color: var(--text-3); transition: transform var(--transition); }
+.suggestion-chip:hover .suggestion-arrow { transform: translateX(3px); color: var(--accent); }
+
+.synth-result-wrap {
+  padding: 24px 32px 32px;
+  max-width: 700px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.synth-response-card {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  position: relative;
+}
+
+.synth-response-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.synth-response-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--orange);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.synth-copy-btn {
+  margin-left: auto;
+  font-size: 11.5px;
+  color: var(--text-3);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 4px 9px;
+  transition: all var(--transition);
+}
+.synth-copy-btn:hover { color: var(--text); background: var(--surface-3); }
+
+.synth-response-text {
+  font-size: 15px;
+  line-height: 1.8;
+  color: var(--text);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.synth-bar {
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  padding: 12px 16px;
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* ── Map view ────────────────────────────────────────────────────────────── */
+#view-map { position: relative; }
+
+#map-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+#map-tooltip {
+  position: fixed;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 13px;
+  font-size: 12.5px;
+  max-width: 200px;
+  pointer-events: none;
+  display: none;
+  box-shadow: var(--shadow-lg);
+  z-index: 50;
+}
+
+#map-tooltip strong { display: block; font-size: 13px; margin-bottom: 4px; color: var(--text); }
+#map-tooltip .tip-host { color: var(--text-3); font-size: 11px; }
+
+.map-legend {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  box-shadow: var(--shadow);
+  max-width: 180px;
+  font-size: 12px;
+}
+
+.map-legend-title {
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-3);
+  margin-bottom: 8px;
+}
+
+.legend-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+  color: var(--text-2);
+  font-size: 12px;
+}
+
+.legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.map-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: var(--text-3);
+  font-size: 14px;
+}
+
+/* ── Feed view ───────────────────────────────────────────────────────────── */
+.feed-header {
+  height: 52px;
+  flex-shrink: 0;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 18px;
+  gap: 10px;
+}
+
+.status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12.5px;
+  color: var(--text-2);
+}
+
+.status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--border-2);
+  position: relative;
+}
+
+.status-dot.active {
+  background: var(--green);
+  box-shadow: 0 0 0 3px var(--green-bg);
+}
+
+.status-dot.active::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: 50%;
+  background: var(--green);
+  opacity: 0.3;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse { 0%,100% { transform: scale(1); opacity: .3; } 50% { transform: scale(1.8); opacity: 0; } }
+
+.feed-list { flex: 1; overflow-y: auto; }
+
+.feed-entry {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  transition: background var(--transition);
+}
+.feed-entry:hover { background: var(--surface-2); }
+
+.feed-entry-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.feed-entry-icon.success  { background: var(--green-bg); }
+.feed-entry-icon.failed   { background: var(--red-bg);   }
+.feed-entry-icon.duplicate{ background: var(--surface-3); }
+.feed-entry-icon.skipped  { background: var(--surface-3); }
+
+.feed-entry-body { flex: 1; min-width: 0; }
+
+.feed-entry-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 2px;
+}
+
+.feed-entry-url {
+  font-size: 11.5px;
+  color: var(--text-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 3px;
+}
+
+.feed-entry-error { font-size: 11.5px; color: var(--red); margin-top: 3px; }
+
+.feed-entry-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.feed-time { font-size: 11px; color: var(--text-3); }
+
+.feed-del-btn {
+  opacity: 0;
+  font-size: 11px;
+  padding: 2px 6px;
+  color: var(--text-3);
+  transition: opacity .15s;
+}
+.feed-entry:hover .feed-del-btn { opacity: 1; }
+
+/* ── Settings panel ──────────────────────────────────────────────────────── */
+#overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.45);
+  z-index: 39;
+  display: none;
+  animation: fadeOverlay .2s ease;
+}
+@keyframes fadeOverlay { from { opacity: 0; } to { opacity: 1; } }
+
+#settings-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 420px;
+  max-width: 100vw;
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  box-shadow: var(--shadow-lg);
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  transform: translateX(100%);
+  transition: transform .25s cubic-bezier(.4,0,.2,1);
+  overflow: hidden;
+}
+
+#settings-panel.open { transform: translateX(0); }
+
+.settings-header {
+  height: 56px;
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  gap: 12px;
+}
+
+.settings-title { font-size: 15px; font-weight: 700; letter-spacing: -0.2px; }
+
+.settings-close {
+  margin-left: auto;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-3);
+  font-size: 18px;
+  background: var(--surface-2);
+  transition: all var(--transition);
+}
+.settings-close:hover { background: var(--surface-3); color: var(--text); }
+
+.settings-body { flex: 1; overflow-y: auto; padding: 20px; }
+
+.settings-section { margin-bottom: 28px; }
+
+.settings-section-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--text-3);
+  margin-bottom: 12px;
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  margin-bottom: 6px;
+}
+
+.settings-row-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+  min-width: 120px;
+}
+
+.settings-row-sub { font-size: 11px; color: var(--text-3); }
+
+.settings-input {
+  flex: 1;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: 5px;
+  padding: 7px 10px;
+  font-size: 13px;
+  color: var(--text);
+  outline: none;
+  transition: border-color var(--transition);
+}
+.settings-input:focus { border-color: var(--accent); }
+
+.settings-footer {
+  padding: 16px 20px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.provider-tabs {
+  display: flex;
+  gap: 4px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 3px;
+  margin-bottom: 12px;
+}
+
+.provider-tab {
+  flex: 1;
+  padding: 6px;
+  border-radius: 5px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text-2);
+  text-align: center;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.provider-tab.active {
+  background: var(--surface);
+  color: var(--accent);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ── Add URL modal ───────────────────────────────────────────────────────── */
+#add-modal {
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 18vh;
+  z-index: 50;
+}
+
+#add-modal.open { display: flex; }
+
+.modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,.5);
+  animation: fadeOverlay .15s ease;
+}
+
+.modal-box {
+  position: relative;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  width: 560px;
+  max-width: calc(100vw - 32px);
+  overflow: hidden;
+  animation: slideDown .18s cubic-bezier(.4,0,.2,1);
+}
+
+@keyframes slideDown { from { opacity:0; transform: translateY(-8px) scale(.98); } to { opacity:1; transform: none; } }
+
+.modal-header {
+  padding: 18px 20px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.modal-title { font-size: 15px; font-weight: 700; }
+
+.modal-body { padding: 20px; }
+.modal-footer { padding: 14px 20px; display: flex; gap: 8px; justify-content: flex-end; border-top: 1px solid var(--border); }
+
+.modal-url-input {
+  width: 100%;
+  background: var(--surface-2);
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  padding: 13px 16px;
+  font-size: 15px;
+  color: var(--text);
+  outline: none;
+  transition: all var(--transition);
+}
+.modal-url-input:focus { border-color: var(--accent); background: var(--surface); box-shadow: 0 0 0 4px var(--accent-dim); }
+.modal-url-input::placeholder { color: var(--text-3); }
+
+.modal-tabs { display: flex; gap: 6px; margin-bottom: 18px; }
+.modal-tab {
+  flex: 1;
+  padding: 8px 0;
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  color: var(--text-2);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+.modal-tab.active {
+  border-color: var(--accent);
+  background: var(--accent-dim);
+  color: var(--accent);
+}
+
+.pdf-drop-zone {
+  border: 2px dashed var(--border);
+  border-radius: var(--radius);
+  padding: 32px 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: all var(--transition);
+  color: var(--text-2);
+}
+.pdf-drop-zone:hover, .pdf-drop-zone.drag-over {
+  border-color: var(--accent);
+  background: var(--accent-dim);
+  color: var(--accent);
+}
+.pdf-drop-zone-icon { font-size: 32px; margin-bottom: 8px; }
+.pdf-drop-zone-label { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+.pdf-drop-zone-sub { font-size: 12px; opacity: .7; }
+.pdf-selected { margin-top: 12px; padding: 10px 14px; background: var(--surface-2); border-radius: var(--radius); font-size: 13px; color: var(--text); display: flex; align-items: center; gap: 8px; }
+
+/* PDF detail pane — applied directly to .pane-detail via JS */
+.pdf-detail-header {
+  flex-shrink: 0;
+  padding: 20px 28px 16px;
+  border-bottom: 1px solid var(--border);
+  overflow-y: auto;
+  max-height: 45vh;
+}
+.pdf-detail-frame {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  border: none;
+  display: block;
+  background: var(--surface-2);
+}
+
+/* ── Toast notifications ─────────────────────────────────────────────────── */
+#toasts {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 100;
+  pointer-events: none;
+}
+
+.toast {
+  background: var(--text);
+  color: var(--bg);
+  padding: 11px 16px;
+  border-radius: var(--radius);
+  font-size: 13.5px;
+  font-weight: 500;
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 340px;
+  animation: toastIn .2s cubic-bezier(.4,0,.2,1);
+  pointer-events: all;
+}
+
+.toast.toast-success { background: var(--green); color: white; }
+.toast.toast-error   { background: var(--red);   color: white; }
+
+@keyframes toastIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes toastOut { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(6px); } }
+
+/* ── Loading states ──────────────────────────────────────────────────────── */
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--border-2);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+  flex-shrink: 0;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.loading-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 20px 16px;
+  color: var(--text-2);
+  font-size: 13px;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 56px 24px;
+  gap: 8px;
+  color: var(--text-3);
+  text-align: center;
+}
+
+.empty-state-icon { font-size: 32px; margin-bottom: 4px; }
+.empty-state-title { font-size: 15px; font-weight: 600; color: var(--text-2); }
+.empty-state-sub { font-size: 13px; max-width: 220px; }
+
+/* ── Mobile ──────────────────────────────────────────────────────────────── */
+#mobile-nav {
+  display: none;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  height: 56px;
+  flex-shrink: 0;
+}
+
+.mob-nav-inner {
+  display: flex;
+  height: 100%;
+}
+
+.mob-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  cursor: pointer;
+  color: var(--text-3);
+  font-size: 9.5px;
+  font-weight: 500;
+  transition: color var(--transition);
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+.mob-item.active { color: var(--accent); }
+.mob-item-icon { font-size: 20px; }
+
+@media (max-width: 768px) {
+  body { flex-direction: column; }
+  #sidebar { display: none; }
+  #mobile-nav { display: flex; }
+  #main { flex: 1; }
+  .pane-list { width: 100%; }
+  .split { flex-direction: column; }
+  .pane-detail { flex: 1; min-height: 50vh; }
+  #settings-panel { width: 100vw; }
+  .detail-body { padding: 20px 18px 40px; }
+  .modal-box { border-radius: var(--radius); }
+  .synth-suggestions { padding: 0 16px 24px; }
+  .synth-result-wrap { padding: 16px 16px 24px; }
+}
+
+/* ── Ingestion progress bar ──────────────────────────────────────────────── */
+#ingest-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--accent), var(--purple));
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform .4s ease;
+  z-index: 200;
+  display: none;
+}
+
+#ingest-bar.active {
+  display: block;
+  animation: progressBar 1.8s ease-in-out infinite;
+}
+
+@keyframes progressBar {
+  0% { transform: translateX(-100%); opacity: 1; }
+  50% { transform: translateX(0); opacity: 1; }
+  100% { transform: translateX(100%); opacity: 0; }
+}
+</style>
+</head>
+<body>
+
+<!-- ── Ingestion progress bar ──────────────────────────────────────────── -->
+<div id="ingest-bar"></div>
+
+<!-- ── Sidebar ──────────────────────────────────────────────────────────── -->
+<aside id="sidebar">
+  <div class="brand">
+    <div class="brand-mark"><img src="/static/icon-256.png" alt="Memexa"></div>
+    <span class="brand-name">Memexa</span>
+  </div>
+
+  <nav class="nav">
+    <div class="nav-section-label">Knowledge</div>
+    <div class="nav-item active" data-view="library" onclick="showView('library')">
+      <div class="nav-icon">📚</div>
+      <span>Library</span>
+      <span class="nav-badge" id="lib-badge" style="display:none"></span>
+    </div>
+    <div class="nav-item" data-view="search" onclick="showView('search')">
+      <div class="nav-icon">🔍</div>
+      <span>Search</span>
+    </div>
+    <div class="nav-item" data-view="synthesise" onclick="showView('synthesise')">
+      <div class="nav-icon">✨</div>
+      <span>Synthesise</span>
+    </div>
+    <div class="nav-section-label" style="margin-top:4px">Discover</div>
+    <div class="nav-item" data-view="map" onclick="showView('map')">
+      <div class="nav-icon">🗺</div>
+      <span>Map</span>
+    </div>
+    <div class="nav-item" data-view="feed" onclick="showView('feed')">
+      <div class="nav-icon">📥</div>
+      <span>Feed</span>
+    </div>
+  </nav>
+
+  <div class="sidebar-footer">
+    <button class="sidebar-btn" onclick="openAddModal()" title="Add URL (⌘K)">
+      <span>＋</span> Add URL
+    </button>
+    <button class="sidebar-btn" onclick="openSettings()" style="flex:0;padding:8px 12px;" title="Settings">
+      ⚙️
+    </button>
+  </div>
+</aside>
+
+<!-- ── Main ─────────────────────────────────────────────────────────────── -->
+<div id="main">
+
+  <!-- Library -->
+  <section class="view active" id="view-library">
+    <div class="topbar">
+      <span class="topbar-title">Library</span>
+      <span class="topbar-sub" id="lib-count-label"></span>
+    </div>
+    <div class="split">
+      <div class="pane-list" id="lib-list">
+        <div class="loading-row"><div class="spinner"></div> Loading…</div>
+      </div>
+      <div class="pane-detail" id="lib-detail">
+        <div class="detail-empty" style="height:100%">
+          <div class="detail-empty-icon">📄</div>
+          <div class="detail-empty-title">Select an item</div>
+          <div class="detail-empty-sub">Click any item to read the full content</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Search -->
+  <section class="view" id="view-search">
+    <div class="search-topbar">
+      <div class="search-wrap">
+        <span class="search-icon">🔍</span>
+        <input class="search-input" id="search-input"
+          placeholder="Search by meaning — press Enter to search…"
+          autocomplete="off" spellcheck="false"
+          onkeydown="if(event.key==='Enter')doSearch()">
+      </div>
+      <button class="btn btn-primary" id="search-btn" onclick="doSearch()">Search</button>
+    </div>
+    <div class="split">
+      <div class="pane-list" id="search-list">
+        <div class="empty-state">
+          <div class="empty-state-icon">✦</div>
+          <div class="empty-state-title">Semantic Search</div>
+          <div class="empty-state-sub">Finds items by meaning, not just keywords. Type a question or concept.</div>
+        </div>
+      </div>
+      <div class="pane-detail" id="search-detail">
+        <div class="detail-empty" style="height:100%">
+          <div class="detail-empty-icon">🔍</div>
+          <div class="detail-empty-title">Select a result</div>
+          <div class="detail-empty-sub">Click a search result to read the full content</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Synthesise -->
+  <section class="view" id="view-synthesise">
+    <div class="topbar">
+      <span class="topbar-title">✨ Synthesise</span>
+      <button class="btn btn-ghost btn-sm" id="synth-clear-btn" onclick="clearSynth()" style="display:none;margin-left:auto">Clear</button>
+    </div>
+    <div class="synth-scroll" id="synth-scroll">
+      <div id="synth-hero">
+        <div class="synth-hero">
+          <div class="synth-hero-icon">✨</div>
+          <div class="synth-hero-title">Ask anything</div>
+          <div class="synth-hero-sub">Search your knowledge base and get an AI-synthesised answer with sources</div>
+        </div>
+        <div class="synth-suggestions" id="synth-suggestions"></div>
+      </div>
+      <div class="synth-result-wrap" id="synth-result" style="display:none"></div>
+    </div>
+    <div class="synth-bar">
+      <input class="text-input" id="synth-input"
+        placeholder="Ask a question about your knowledge…"
+        onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();doSynth()}">
+      <button class="btn btn-primary" id="synth-btn" onclick="doSynth()">
+        <span>↑</span>
+      </button>
+    </div>
+  </section>
+
+  <!-- Map -->
+  <section class="view" id="view-map">
+    <canvas id="map-canvas"></canvas>
+    <div id="map-tooltip"><strong id="tip-title"></strong><div class="tip-host" id="tip-host"></div></div>
+    <div class="map-legend" id="map-legend" style="display:none">
+      <div class="map-legend-title">Tag clusters</div>
+      <div id="map-legend-items"></div>
+    </div>
+    <div class="map-empty" id="map-empty" style="display:none">
+      <div style="font-size:32px">🗺</div>
+      <div style="font-weight:600;color:var(--text-2)">No map data yet</div>
+      <div style="font-size:13px;max-width:200px;text-align:center">Save some URLs to see how your knowledge connects</div>
+    </div>
+  </section>
+
+  <!-- Feed -->
+  <section class="view" id="view-feed">
+    <div class="feed-header">
+      <div class="status-indicator">
+        <div class="status-dot" id="feed-dot"></div>
+        <span id="feed-status-text">–</span>
+      </div>
+      <span class="topbar-sub" id="feed-count" style="margin-left:auto;margin-right:12px"></span>
+      <button class="btn btn-ghost btn-sm" id="feed-clear-btn" onclick="clearFeed()" style="display:none">Clear all</button>
+    </div>
+    <div class="feed-list" id="feed-list">
+      <div class="loading-row"><div class="spinner"></div> Loading…</div>
+    </div>
+  </section>
+
+</div><!-- /#main -->
+
+<!-- ── Mobile nav ────────────────────────────────────────────────────────── -->
+<nav id="mobile-nav">
+  <div class="mob-nav-inner">
+    <div class="mob-item active" data-view="library" onclick="showView('library')">
+      <div class="mob-item-icon">📚</div><span>Library</span>
+    </div>
+    <div class="mob-item" data-view="search" onclick="showView('search')">
+      <div class="mob-item-icon">🔍</div><span>Search</span>
+    </div>
+    <div class="mob-item" data-view="synthesise" onclick="showView('synthesise')">
+      <div class="mob-item-icon">✨</div><span>Synth</span>
+    </div>
+    <div class="mob-item" data-view="map" onclick="showView('map')">
+      <div class="mob-item-icon">🗺</div><span>Map</span>
+    </div>
+    <div class="mob-item" data-view="feed" onclick="showView('feed')">
+      <div class="mob-item-icon">📥</div><span>Feed</span>
+    </div>
+  </div>
+</nav>
+
+<!-- ── Settings panel ────────────────────────────────────────────────────── -->
+<div id="overlay" onclick="closeSettings()"></div>
+<aside id="settings-panel">
+  <div class="settings-header">
+    <span style="font-size:18px">⚙️</span>
+    <span class="settings-title">Settings</span>
+    <button class="settings-close" onclick="closeSettings()">✕</button>
+  </div>
+  <div class="settings-body">
+    <div class="settings-section">
+      <div class="settings-section-title">LLM Provider</div>
+      <div class="provider-tabs" id="provider-tabs">
+        <div class="provider-tab" data-provider="ollama" onclick="selectProvider('ollama')">Ollama</div>
+        <div class="provider-tab" data-provider="openai" onclick="selectProvider('openai')">OpenAI</div>
+        <div class="provider-tab" data-provider="claude" onclick="selectProvider('claude')">Claude</div>
+      </div>
+
+      <div id="pane-ollama">
+        <div class="settings-row">
+          <div><div class="settings-row-label">Base URL</div><div class="settings-row-sub">Ollama API address</div></div>
+          <input class="settings-input" id="s-ollama-url" placeholder="http://localhost:11434">
+        </div>
+        <div class="settings-row">
+          <div><div class="settings-row-label">Chat Model</div></div>
+          <input class="settings-input" id="s-ollama-chat" placeholder="gemma4:latest">
+        </div>
+        <div class="settings-row">
+          <div><div class="settings-row-label">Embed Model</div></div>
+          <input class="settings-input" id="s-ollama-embed" placeholder="mxbai-embed-large">
+        </div>
+      </div>
+
+      <div id="pane-openai" style="display:none">
+        <div class="settings-row">
+          <div><div class="settings-row-label">API Key</div></div>
+          <input class="settings-input" id="s-openai-key" type="password" placeholder="sk-…">
+        </div>
+        <div class="settings-row">
+          <div><div class="settings-row-label">Model</div></div>
+          <input class="settings-input" id="s-openai-model" placeholder="gpt-4o-mini">
+        </div>
+      </div>
+
+      <div id="pane-claude" style="display:none">
+        <div class="settings-row">
+          <div><div class="settings-row-label">API Key</div><div class="settings-row-sub">sk-ant-…</div></div>
+          <input class="settings-input" id="s-claude-key" type="password" placeholder="sk-ant-…">
+        </div>
+        <div class="settings-row">
+          <div><div class="settings-row-label">Model</div></div>
+          <input class="settings-input" id="s-claude-model" placeholder="claude-sonnet-4-6">
+        </div>
+        <div style="margin-top:8px;padding:10px 12px;background:var(--amber-bg);border:1px solid rgba(196,122,16,.2);border-radius:var(--radius-sm);font-size:12px;color:var(--amber)">
+          ⚠️ Claude does not support embeddings. Semantic search and synthesis require Ollama or OpenAI for embedding.
+        </div>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-section-title">Telegram Bot</div>
+      <div class="settings-row">
+        <div>
+          <div class="settings-row-label">Bot Token</div>
+          <div class="settings-row-sub">From @BotFather</div>
+        </div>
+        <input class="settings-input" id="s-telegram-token" type="password" placeholder="123456:ABC-DEF…">
+      </div>
+      <div style="margin-top:8px;padding:10px 12px;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;color:var(--text-2);line-height:1.6">
+        1. Create a bot via @BotFather → /newbot<br>
+        2. Copy the token above<br>
+        3. Send URLs to the bot — Memexa saves them automatically
+      </div>
+    </div>
+  </div>
+  <div class="settings-footer">
+    <button class="btn btn-ghost" style="flex:1" onclick="closeSettings()">Cancel</button>
+    <button class="btn btn-primary" style="flex:2" onclick="saveSettings()">Save settings</button>
+  </div>
+</aside>
+
+<!-- ── Add modal ─────────────────────────────────────────────────────────── -->
+<div id="add-modal">
+  <div class="modal-backdrop" onclick="closeAddModal()"></div>
+  <div class="modal-box">
+    <div class="modal-header">
+      <span style="font-size:18px">＋</span>
+      <span class="modal-title">Add to Library</span>
+      <button class="settings-close" onclick="closeAddModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-tabs">
+        <button class="modal-tab active" id="tab-url" onclick="switchAddTab('url')">🔗 URL</button>
+        <button class="modal-tab" id="tab-pdf" onclick="switchAddTab('pdf')">📄 PDF</button>
+      </div>
+
+      <!-- URL pane -->
+      <div id="add-pane-url">
+        <input class="modal-url-input" id="add-url-input"
+          type="url"
+          placeholder="https://example.com/article…"
+          autocomplete="off"
+          onkeydown="if(event.key==='Enter')submitAdd()">
+        <div style="margin-top:10px;font-size:12.5px;color:var(--text-3)">
+          Memexa will extract the content, generate an AI summary, and add it to your library.
+        </div>
+      </div>
+
+      <!-- PDF pane -->
+      <div id="add-pane-pdf" style="display:none">
+        <div class="pdf-drop-zone" id="pdf-drop-zone"
+          onclick="document.getElementById('pdf-file-input').click()"
+          ondragover="event.preventDefault();this.classList.add('drag-over')"
+          ondragleave="this.classList.remove('drag-over')"
+          ondrop="onPDFDrop(event)">
+          <div class="pdf-drop-zone-icon">📄</div>
+          <div class="pdf-drop-zone-label">Click to select a PDF</div>
+          <div class="pdf-drop-zone-sub">or drag and drop here</div>
+          <input type="file" id="pdf-file-input" accept=".pdf" style="display:none"
+            onchange="onPDFSelected(this.files[0])">
+        </div>
+        <div id="pdf-selected-name" style="display:none" class="pdf-selected">
+          <span>📄</span><span id="pdf-selected-label"></span>
+        </div>
+        <div style="margin-top:10px;font-size:12.5px;color:var(--text-3)">
+          Memexa will extract text, generate an AI summary, and store the original PDF.
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeAddModal()">Cancel</button>
+      <button class="btn btn-primary" id="add-submit-btn" onclick="submitAdd()">Save URL</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Toasts ─────────────────────────────────────────────────────────────── -->
+<div id="toasts"></div>
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────────
+const state = {
+  view: 'library',
+  items: [],
+  selectedItemId: null,
+  searchResults: [],
+  searchSelId: null,
+  mapDots: [],
+  mapItems: [],
+  feedLog: [],
+  settings: {},
+  synth: { query: '', response: '', loading: false },
+};
+
+const TAG_PALETTE = [
+  '#5b3ff8','#e86f2c','#0d8f8f','#1e9449','#7c3aed',
+  '#d12b2b','#c47a10','#0870d4','#be185d','#065f46',
+];
+const tagColors = {};
+let colorIdx = 0;
+function tagColor(tag) {
+  if (!tag) return '#9e9b96';
+  return tagColors[tag] ??= TAG_PALETTE[colorIdx++ % TAG_PALETTE.length];
+}
+
+// ── Routing ────────────────────────────────────────────────────────────────
+function showView(name) {
+  state.view = name;
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('[data-view]').forEach(n => n.classList.remove('active'));
+  document.getElementById('view-' + name).classList.add('active');
+  document.querySelectorAll('[data-view="' + name + '"]').forEach(n => n.classList.add('active'));
+
+  if (name === 'library') loadLibrary();
+  else if (name === 'map') loadMap();
+  else if (name === 'feed') loadFeed();
+  else if (name === 'synthesise') initSynth();
+}
+
+// ── Library ────────────────────────────────────────────────────────────────
+async function loadLibrary() {
+  const res = await api('/api/items');
+  if (!res) return;
+  state.items = res;
+  renderLibraryList();
+  updateLibraryBadge();
+}
+
+function updateLibraryBadge() {
+  const total = state.items.length;
+  const unread = state.items.filter(i => i.status === 'unread').length;
+  const badge = document.getElementById('lib-badge');
+  const label = document.getElementById('lib-count-label');
+  label.textContent = total + ' item' + (total !== 1 ? 's' : '') + (unread ? ` · ${unread} new` : '');
+  badge.textContent = total;
+  badge.style.display = total ? '' : 'none';
+}
+
+function renderLibraryList() {
+  const el = document.getElementById('lib-list');
+  if (!state.items.length) {
+    el.innerHTML = `<div class="empty-state">
+      <div class="empty-state-icon">📭</div>
+      <div class="empty-state-title">Nothing saved yet</div>
+      <div class="empty-state-sub">Add a URL to start building your knowledge base</div>
+    </div>`;
+    return;
+  }
+  el.innerHTML = state.items.map(item => {
+    const host = tryHost(item.url);
+    const sel = state.selectedItemId === item.id;
+    return `<div class="item-card${sel ? ' selected' : ''}" data-id="${item.id}" onclick="selectItem(this.dataset.id,'lib')">
+      <div class="card-title">${x(item.title || item.url)}</div>
+      <div class="card-host">
+        ${item.status === 'unread' ? '<div class="unread-dot"></div>' : ''}
+        <span>${x(host)}</span>
+      </div>
+      ${item.summary ? `<div class="card-summary">${x(item.summary)}</div>` : ''}
+      <div class="card-footer">
+        ${item.tags.slice(0, 3).map(t => `<span class="tag">${x(t)}</span>`).join('')}
+        <span class="card-time">${relTime(item.createdAt)}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function selectItem(id, pane) {
+  state.selectedItemId = id;
+  if (pane === 'lib') renderLibraryList();
+  else if (pane === 'search') renderSearchResults();
+
+  const detailEl = document.getElementById(pane === 'lib' ? 'lib-detail' : 'search-detail');
+  detailEl.style.cssText = '';  // reset any PDF flex overrides
+  detailEl.innerHTML = `<div class="loading-row" style="padding:28px"><div class="spinner"></div> Loading…</div>`;
+
+  const item = await api('/api/items/' + id);
+  if (!item) {
+    detailEl.innerHTML = `<div class="loading-row" style="padding:28px;color:var(--text-3)">Could not load item — server may be unavailable.</div>`;
+    return;
+  }
+
+  // Update local cache status
+  const cached = state.items.find(i => i.id === id);
+  if (cached) cached.status = 'read';
+  if (pane === 'lib') renderLibraryList();
+
+  renderDetail(item, detailEl, pane === 'lib');
+}
+
+function renderDetail(item, container, showActions) {
+  const host = tryHost(item.url);
+  const pdf = isPDF(item.url);
+  const pdfId = pdf ? pdfItemId(item.url) : null;
+  const tags = (item.tags || []).slice(0, 3).map(t => `<span class="tag">${x(t)}</span>`).join('');
+
+  if (pdf) {
+    // Turn the pane itself into a flex column so the iframe gets flex:1 against a definite height
+    container.style.cssText = 'display:flex;flex-direction:column;overflow:hidden';
+    const actions = showActions ? `<div class="detail-actions">
+      <a href="/api/uploads/${x(pdfId)}" target="_blank" rel="noopener"><button class="btn btn-ghost btn-sm">↗ Open PDF</button></a>
+      <a href="/api/uploads/${x(pdfId)}" download="${x(item.title || 'document')}.pdf"><button class="btn btn-ghost btn-sm">⬇ Download</button></a>
+      <button class="btn btn-danger btn-sm" data-id="${item.id}" onclick="deleteItem(this.dataset.id)">🗑 Delete</button>
+    </div>` : '';
+
+    container.innerHTML = `
+      <div class="pdf-detail-header">
+        <div class="detail-eyebrow">
+          <span class="detail-domain" style="cursor:default"><span>📄</span> PDF document</span>
+          ${tags}
+        </div>
+        <h1 class="detail-title">${x(item.title || 'Untitled')}</h1>
+        <div class="detail-meta">
+          <span class="detail-meta-item">🕐 ${relTime(item.createdAt)}</span>
+          <span class="badge badge-${item.status}">${item.status}</span>
+        </div>
+        ${actions}
+        ${item.summary ? `<div class="summary-card" style="margin-top:14px">
+          <div class="summary-label">✨ AI Summary</div>
+          <div class="summary-text">${x(item.summary)}</div>
+        </div>` : ''}
+      </div>
+      <iframe class="pdf-detail-frame" src="/api/uploads/${x(pdfId)}"
+        title="${x(item.title || 'PDF')}" allowfullscreen></iframe>`;
+    return;
+  }
+
+  // Restore normal pane scroll behaviour when switching away from a PDF
+  container.style.cssText = '';
+
+  // Standard web article layout
+  const actions = showActions ? `<div class="detail-actions">
+    <a href="${x(item.url)}" target="_blank" rel="noopener"><button class="btn btn-ghost btn-sm">↗ Open article</button></a>
+    <button class="btn btn-danger btn-sm" data-id="${item.id}" onclick="deleteItem(this.dataset.id)">🗑 Delete</button>
+  </div>` : '';
+
+  container.innerHTML = `<div class="detail-body">
+    <div class="detail-eyebrow">
+      <a class="detail-domain" href="${x(item.url)}" target="_blank" rel="noopener">
+        <span>🔗</span> ${x(host)}
+      </a>
+      ${tags}
+    </div>
+    <h1 class="detail-title">${x(item.title || 'Untitled')}</h1>
+    <div class="detail-meta">
+      <span class="detail-meta-item">🕐 ${relTime(item.createdAt)}</span>
+      <span class="badge badge-${item.status}">${item.status}</span>
+    </div>
+    ${actions}
+    ${item.summary ? `<div class="summary-card">
+      <div class="summary-label">✨ AI Summary</div>
+      <div class="summary-text">${x(item.summary)}</div>
+    </div>` : ''}
+    ${item.content ? `<div class="content-section">
+      <div class="content-label">Full content</div>
+      <div class="content-body">${renderContent(item.content)}</div>
+    </div>` : ''}
+  </div>`;
+}
+
+function renderContent(text) {
+  if (!text) return '';
+  return text.split('\n')
+    .map(line => {
+      const t = line.trim();
+      if (!t) return '';
+      return `<p>${x(t)}</p>`;
+    })
+    .filter(Boolean)
+    .join('');
+}
+
+async function deleteItem(id) {
+  if (!confirm('Delete this item from your library?')) return;
+  await apiFetch('/api/items/' + id, { method: 'DELETE' });
+  state.items = state.items.filter(i => i.id !== id);
+  if (state.selectedItemId === id) {
+    state.selectedItemId = null;
+    document.getElementById('lib-detail').innerHTML = `<div class="detail-empty" style="height:100%">
+      <div class="detail-empty-icon">🗑</div>
+      <div class="detail-empty-title">Item deleted</div>
+    </div>`;
+  }
+  renderLibraryList();
+  updateLibraryBadge();
+  toast('Item deleted');
+}
+
+// ── Search ─────────────────────────────────────────────────────────────────
+async function doSearch() {
+  const q = document.getElementById('search-input').value.trim();
+  if (!q) return;
+  const btn = document.getElementById('search-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner" style="border-top-color:white"></div>';
+  document.getElementById('search-list').innerHTML = `<div class="loading-row"><div class="spinner"></div> Searching semantically…</div>`;
+
+  const results = await api('/api/search', { method: 'POST', body: { query: q } });
+  btn.disabled = false;
+  btn.innerHTML = 'Search';
+
+  if (!results) return;
+  state.searchResults = results;
+  state.searchSelId = null;
+  renderSearchResults();
+}
+
+function renderSearchResults() {
+  const el = document.getElementById('search-list');
+  const results = state.searchResults;
+  if (!results.length) {
+    el.innerHTML = `<div class="empty-state">
+      <div class="empty-state-icon">🔎</div>
+      <div class="empty-state-title">No results found</div>
+      <div class="empty-state-sub">Try different keywords or add more content</div>
+    </div>`;
+    return;
+  }
+  el.innerHTML = results.map(item => {
+    const score = item.score != null ? Math.round(item.score * 100) : null;
+    const scoreColor = score > 75 ? 'var(--green)' : score > 50 ? 'var(--amber)' : 'var(--text-3)';
+    const sel = state.searchSelId === item.id;
+    return `<div class="item-card${sel ? ' selected' : ''}" data-id="${item.id}" onclick="selectItem(this.dataset.id,'search');state.searchSelId=this.dataset.id">
+      <div style="display:flex;gap:8px;align-items:flex-start">
+        <div class="card-title" style="flex:1">${x(item.title || item.url)}</div>
+        ${score != null ? `<div class="score-pill" style="background:${scoreColor}22;color:${scoreColor};flex-shrink:0">${score}%</div>` : ''}
+      </div>
+      ${item.summary ? `<div class="card-summary" style="margin-top:4px">${x(item.summary)}</div>` : ''}
+      <div class="card-footer" style="margin-top:6px">
+        ${item.tags.slice(0, 3).map(t => `<span class="tag">${x(t)}</span>`).join('')}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── Synthesise ─────────────────────────────────────────────────────────────
+const SUGGESTIONS = [
+  'What are the key themes across my saved articles?',
+  'Summarise the latest AI developments I\'ve saved',
+  'What practical ideas can I apply from my knowledge base?',
+];
+
+function initSynth() {
+  if (document.getElementById('synth-suggestions').children.length) return;
+  document.getElementById('synth-suggestions').innerHTML = SUGGESTIONS.map(s =>
+    `<button class="suggestion-chip" onclick="useSuggestion(this)">${x(s)}<span class="suggestion-arrow">→</span></button>`
+  ).join('');
+}
+
+function useSuggestion(btn) {
+  document.getElementById('synth-input').value = btn.firstChild.textContent.trim();
+  doSynth();
+}
+
+async function doSynth() {
+  const q = document.getElementById('synth-input').value.trim();
+  if (!q || state.synth.loading) return;
+  state.synth.loading = true;
+  state.synth.query = q;
+
+  document.getElementById('synth-hero').style.display = 'none';
+  document.getElementById('synth-result').style.display = '';
+  document.getElementById('synth-clear-btn').style.display = '';
+  document.getElementById('synth-btn').disabled = true;
+
+  document.getElementById('synth-result').innerHTML = `<div class="synth-result-wrap">
+    <div class="synth-response-card">
+      <div class="synth-response-header">
+        <span style="font-size:16px">✨</span>
+        <span class="synth-response-label">Synthesising…</span>
+        <div class="spinner" style="margin-left:auto"></div>
+      </div>
+      <div style="color:var(--text-3);font-size:13px">Searching your knowledge base and generating a response…</div>
+    </div>
+  </div>`;
+
+  const data = await api('/api/synthesise', { method: 'POST', body: { query: q } });
+  state.synth.loading = false;
+  document.getElementById('synth-btn').disabled = false;
+
+  if (!data) {
+    document.getElementById('synth-result').innerHTML = `<div class="synth-result-wrap"><div style="color:var(--red);padding:16px">Failed to synthesise. Check your LLM settings.</div></div>`;
+    return;
+  }
+
+  const response = data.answer || data.error || 'No response';
+  document.getElementById('synth-result').innerHTML = `<div class="synth-result-wrap">
+    <div class="synth-response-card">
+      <div class="synth-response-header">
+        <span style="font-size:16px">✨</span>
+        <span class="synth-response-label">Synthesis</span>
+        <button class="synth-copy-btn" onclick="copyText(document.getElementById('synth-text').textContent)">Copy</button>
+      </div>
+      <div class="synth-response-text" id="synth-text">${x(response)}</div>
+    </div>
+  </div>`;
+}
+
+function clearSynth() {
+  state.synth = { query: '', response: '', loading: false };
+  document.getElementById('synth-input').value = '';
+  document.getElementById('synth-hero').style.display = '';
+  document.getElementById('synth-result').style.display = 'none';
+  document.getElementById('synth-clear-btn').style.display = 'none';
+}
+
+// ── Map ────────────────────────────────────────────────────────────────────
+async function loadMap() {
+  const canvas = document.getElementById('map-canvas');
+  const ctx = canvas.getContext('2d');
+  canvas.width = canvas.offsetWidth;
+  canvas.height = canvas.offsetHeight;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  const data = await api('/api/map');
+  if (!data) return;
+
+  if (!data.length) {
+    document.getElementById('map-empty').style.display = '';
+    return;
+  }
+
+  document.getElementById('map-empty').style.display = 'none';
+  state.mapItems = data;
+  _map.scale = 1; _map.offX = 0; _map.offY = 0;
+  renderMap();
+}
+
+// Map transform state (pan + zoom)
+const _map = { scale: 1, offX: 0, offY: 0 };
+
+function _mapBaseCoords(canvas) {
+  const W = canvas.width, H = canvas.height, pad = 56;
+  return {
+    bx: item => pad + item.x * (W - 2 * pad),
+    by: item => pad + item.y * (H - 2 * pad),
+  };
+}
+
+function _toScreen(bx, by) {
+  return { sx: _map.offX + _map.scale * bx, sy: _map.offY + _map.scale * by };
+}
+
+function _toBase(screenX, screenY) {
+  return { bx: (screenX - _map.offX) / _map.scale, by: (screenY - _map.offY) / _map.scale };
+}
+
+function renderMap() {
+  const canvas = document.getElementById('map-canvas');
+  canvas.width = canvas.offsetWidth;
+  canvas.height = canvas.offsetHeight;
+  const ctx = canvas.getContext('2d');
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.save();
+  ctx.translate(_map.offX, _map.offY);
+  ctx.scale(_map.scale, _map.scale);
+
+  const { bx, by } = _mapBaseCoords(canvas);
+
+  // Draw edges between nearby items
+  ctx.lineWidth = 1 / _map.scale;
+  for (let i = 0; i < state.mapItems.length; i++) {
+    for (let j = i + 1; j < state.mapItems.length; j++) {
+      const a = state.mapItems[i], b = state.mapItems[j];
+      const dx = a.x - b.x, dy = a.y - b.y;
+      if (dx * dx + dy * dy < 0.025) {
+        const sameTag = a.tags[0] && a.tags[0] === b.tags[0];
+        ctx.strokeStyle = sameTag
+          ? tagColor(a.tags[0]) + '30'
+          : 'rgba(158,155,150,.12)';
+        ctx.beginPath();
+        ctx.moveTo(bx(a), by(a));
+        ctx.lineTo(bx(b), by(b));
+        ctx.stroke();
+      }
+    }
+  }
+
+  // Draw dots and store base-space positions for hit testing
+  state.mapDots = state.mapItems.map(item => {
+    const px = bx(item), py = by(item);
+    const color = tagColor(item.tags[0]);
+
+    ctx.beginPath();
+    ctx.arc(px, py, 11, 0, Math.PI * 2);
+    ctx.fillStyle = color + '22';
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.arc(px, py, 7, 0, Math.PI * 2);
+    ctx.fillStyle = color;
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.arc(px, py, 7, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(255,255,255,.5)';
+    ctx.lineWidth = 1.5 / _map.scale;
+    ctx.stroke();
+
+    return { item, px, py }; // base-space coords
+  });
+
+  ctx.restore();
+
+  // Build legend
+  const topTags = [...new Set(state.mapItems.flatMap(i => i.tags.slice(0, 1)).filter(Boolean))].slice(0, 8);
+  if (topTags.length > 1) {
+    const leg = document.getElementById('map-legend');
+    leg.style.display = '';
+    document.getElementById('map-legend-items').innerHTML = topTags.map(t =>
+      `<div class="legend-row"><div class="legend-dot" style="background:${tagColor(t)}"></div>${x(t)}</div>`
+    ).join('');
+  }
+}
+
+// Map interactions
+const mapCanvas = document.getElementById('map-canvas');
+const tooltip = document.getElementById('map-tooltip');
+
+// Hit-test in base space (dot.px/py are base coords)
+function _hitTest(screenX, screenY, radius = 18) {
+  const { bx, by } = _toBase(screenX, screenY);
+  let nearest = null, minD = radius / _map.scale;
+  for (const dot of state.mapDots) {
+    const d = Math.hypot(dot.px - bx, dot.py - by);
+    if (d < minD) { minD = d; nearest = dot; }
+  }
+  return nearest;
+}
+
+mapCanvas.addEventListener('mousemove', e => {
+  if (_mapDrag.active) {
+    // Panning
+    _map.offX = _mapDrag.startOffX + (e.clientX - _mapDrag.startX);
+    _map.offY = _mapDrag.startOffY + (e.clientY - _mapDrag.startY);
+    _mapDrag.moved = true;
+    tooltip.style.display = 'none';
+    mapCanvas.style.cursor = 'grabbing';
+    renderMap();
+    return;
+  }
+  const rect = mapCanvas.getBoundingClientRect();
+  const nearest = _hitTest(e.clientX - rect.left, e.clientY - rect.top);
+  if (nearest) {
+    tooltip.style.display = 'block';
+    tooltip.style.left = (e.clientX + 14) + 'px';
+    tooltip.style.top = (e.clientY - 10) + 'px';
+    document.getElementById('tip-title').textContent = nearest.item.title || 'Untitled';
+    document.getElementById('tip-host').textContent = tryHost(nearest.item.url);
+    mapCanvas.style.cursor = 'pointer';
+  } else {
+    tooltip.style.display = 'none';
+    mapCanvas.style.cursor = 'grab';
+  }
+});
+
+mapCanvas.addEventListener('mouseleave', () => {
+  tooltip.style.display = 'none';
+  _mapDrag.active = false;
+});
+
+// Drag-to-pan
+const _mapDrag = { active: false, moved: false, startX: 0, startY: 0, startOffX: 0, startOffY: 0 };
+
+mapCanvas.addEventListener('mousedown', e => {
+  _mapDrag.active = true;
+  _mapDrag.moved = false;
+  _mapDrag.startX = e.clientX;
+  _mapDrag.startY = e.clientY;
+  _mapDrag.startOffX = _map.offX;
+  _mapDrag.startOffY = _map.offY;
+});
+
+window.addEventListener('mouseup', () => { _mapDrag.active = false; });
+
+mapCanvas.addEventListener('click', e => {
+  if (_mapDrag.moved) { _mapDrag.moved = false; return; }
+  const rect = mapCanvas.getBoundingClientRect();
+  const nearest = _hitTest(e.clientX - rect.left, e.clientY - rect.top, 14);
+  if (nearest) {
+    showView('library');
+    setTimeout(() => selectItem(nearest.item.id, 'lib'), 80);
+  }
+});
+
+// Wheel zoom centred on cursor
+mapCanvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  const rect = mapCanvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+  const factor = e.deltaY < 0 ? 1.12 : 1 / 1.12;
+  const newScale = Math.min(8, Math.max(0.25, _map.scale * factor));
+  const actualF = newScale / _map.scale;
+  _map.offX = mx + (_map.offX - mx) * actualF;
+  _map.offY = my + (_map.offY - my) * actualF;
+  _map.scale = newScale;
+  renderMap();
+}, { passive: false });
+
+new ResizeObserver(() => { if (state.view === 'map' && state.mapItems.length) renderMap(); })
+  .observe(mapCanvas);
+
+// ── Feed ───────────────────────────────────────────────────────────────────
+async function loadFeed() {
+  const data = await api('/api/feed');
+  if (!data) return;
+  state.feedLog = data;
+  renderFeed();
+}
+
+function renderFeed() {
+  const log = state.feedLog;
+  const dot = document.getElementById('feed-dot');
+  const statusTxt = document.getElementById('feed-status-text');
+  const count = document.getElementById('feed-count');
+
+  const lastSuccess = log.find(e => e.status === 'success');
+  const isActive = lastSuccess && (Date.now() / 1000 - lastSuccess.timestamp) < 180;
+  dot.className = 'status-dot' + (isActive ? ' active' : '');
+  statusTxt.textContent = isActive ? 'Polling active' : 'Waiting for next poll…';
+  count.textContent = log.length + ' entries';
+  document.getElementById('feed-clear-btn').style.display = log.length ? '' : 'none';
+
+  const icons = { success: '✅', failed: '❌', duplicate: '➖', skipped: '⏭' };
+  const el = document.getElementById('feed-list');
+
+  if (!log.length) {
+    el.innerHTML = `<div class="empty-state">
+      <div class="empty-state-icon">📭</div>
+      <div class="empty-state-title">No activity yet</div>
+      <div class="empty-state-sub">Send a URL to your Telegram bot to get started</div>
+    </div>`;
+    return;
+  }
+
+  el.innerHTML = log.map(e => `
+    <div class="feed-entry" data-entry-id="${e.id}">
+      <div class="feed-entry-icon ${e.status}">${icons[e.status] || '•'}</div>
+      <div class="feed-entry-body">
+        <div class="feed-entry-title">${x(e.title || e.url)}</div>
+        ${e.title ? `<div class="feed-entry-url">${x(e.url)}</div>` : ''}
+        ${e.error ? `<div class="feed-entry-error">${x(e.error)}</div>` : ''}
+      </div>
+      <div class="feed-entry-right">
+        <span class="feed-time">${relTime(e.timestamp)}</span>
+        <span class="badge badge-${e.status}">${e.status}</span>
+        ${e.status === 'failed' ? `<button class="btn btn-danger btn-sm" data-url="${x(e.url)}" data-id="${e.id}" onclick="retryURL(this.dataset.url, this.dataset.id, this)">Retry</button>` : ''}
+        <button class="btn btn-ghost btn-sm feed-del-btn" data-id="${e.id}" onclick="deleteFeedEntry(${e.id}, this)" title="Delete">✕</button>
+      </div>
+    </div>`).join('');
+}
+
+async function deleteFeedEntry(entryId, btn) {
+  const row = btn.closest('.feed-entry');
+  row.style.opacity = '0.4';
+  await apiFetch(`/api/feed/${entryId}`, { method: 'DELETE' }).catch(() => {});
+  row.remove();
+  state.feedLog = state.feedLog.filter(e => e.id !== entryId);
+  document.getElementById('feed-count').textContent = state.feedLog.length + ' entries';
+  if (!state.feedLog.length) {
+    document.getElementById('feed-clear-btn').style.display = 'none';
+    renderFeed();
+  }
+}
+
+async function clearFeed() {
+  if (!confirm('Delete all feed entries?')) return;
+  await apiFetch('/api/feed', { method: 'DELETE' }).catch(() => {});
+  state.feedLog = [];
+  renderFeed();
+}
+
+async function retryURL(url, entryId, btn) {
+  btn.disabled = true;
+  btn.textContent = '…';
+  const res = await apiFetch('/api/feed/retry', { method: 'POST', body: JSON.stringify({ url, entryId: Number(entryId) }) });
+  if (res && res.status === 'already_saved') {
+    toast('Already in your Library');
+  } else {
+    toast('Re-queued for ingestion ⏳');
+  }
+  btn.closest('.feed-entry').remove();
+}
+
+// ── Settings ───────────────────────────────────────────────────────────────
+function openSettings() {
+  loadSettings();
+  document.getElementById('settings-panel').classList.add('open');
+  document.getElementById('overlay').style.display = 'block';
+}
+
+function closeSettings() {
+  document.getElementById('settings-panel').classList.remove('open');
+  document.getElementById('overlay').style.display = 'none';
+}
+
+async function loadSettings() {
+  const s = await api('/api/settings');
+  if (!s) return;
+  state.settings = s;
+  document.getElementById('s-ollama-url').value   = s.ollama_base_url || '';
+  document.getElementById('s-ollama-chat').value  = s.ollama_chat_model || '';
+  document.getElementById('s-ollama-embed').value = s.ollama_embed_model || '';
+  document.getElementById('s-openai-key').value   = s.openai_api_key || '';
+  document.getElementById('s-openai-model').value = s.openai_model || '';
+  document.getElementById('s-claude-key').value   = s.claude_api_key || '';
+  document.getElementById('s-claude-model').value = s.claude_model || '';
+  document.getElementById('s-telegram-token').value = s.telegram_bot_token || '';
+  selectProvider(s.llm_provider || 'ollama');
+}
+
+function selectProvider(name) {
+  document.querySelectorAll('.provider-tab').forEach(t => t.classList.toggle('active', t.dataset.provider === name));
+  ['ollama', 'openai', 'claude'].forEach(p => {
+    document.getElementById('pane-' + p).style.display = p === name ? '' : 'none';
+  });
+}
+
+async function saveSettings() {
+  const btn = document.querySelector('#settings-panel .btn-primary');
+  btn.disabled = true;
+  btn.textContent = 'Saving…';
+
+  const provider = document.querySelector('.provider-tab.active')?.dataset.provider || 'ollama';
+  const payload = {
+    llm_provider:       provider,
+    ollama_base_url:    document.getElementById('s-ollama-url').value,
+    ollama_chat_model:  document.getElementById('s-ollama-chat').value,
+    ollama_embed_model: document.getElementById('s-ollama-embed').value,
+    openai_api_key:     document.getElementById('s-openai-key').value,
+    openai_model:       document.getElementById('s-openai-model').value,
+    claude_api_key:     document.getElementById('s-claude-key').value,
+    claude_model:       document.getElementById('s-claude-model').value,
+    telegram_bot_token: document.getElementById('s-telegram-token').value,
+  };
+
+  const res = await api('/api/settings', { method: 'PUT', body: payload });
+  btn.disabled = false;
+  btn.textContent = 'Save settings';
+
+  if (res) { toast('Settings saved ✓', 'success'); closeSettings(); }
+  else toast('Failed to save settings', 'error');
+}
+
+// ── Add URL modal ──────────────────────────────────────────────────────────
+// ── Add modal ──────────────────────────────────────────────────────────────
+let _addMode = 'url';
+let _selectedPDF = null;
+
+function switchAddTab(mode) {
+  _addMode = mode;
+  document.getElementById('tab-url').classList.toggle('active', mode === 'url');
+  document.getElementById('tab-pdf').classList.toggle('active', mode === 'pdf');
+  document.getElementById('add-pane-url').style.display = mode === 'url' ? '' : 'none';
+  document.getElementById('add-pane-pdf').style.display = mode === 'pdf' ? '' : 'none';
+  document.getElementById('add-submit-btn').textContent = mode === 'url' ? 'Save URL' : 'Upload PDF';
+  if (mode === 'url') setTimeout(() => document.getElementById('add-url-input').focus(), 50);
+}
+
+function openAddModal() {
+  _selectedPDF = null;
+  document.getElementById('add-modal').classList.add('open');
+  document.getElementById('pdf-selected-name').style.display = 'none';
+  document.getElementById('pdf-file-input').value = '';
+  switchAddTab('url');
+}
+
+function closeAddModal() {
+  document.getElementById('add-modal').classList.remove('open');
+  document.getElementById('add-url-input').value = '';
+  _selectedPDF = null;
+}
+
+function onPDFSelected(file) {
+  if (!file) return;
+  _selectedPDF = file;
+  document.getElementById('pdf-selected-label').textContent = file.name;
+  document.getElementById('pdf-selected-name').style.display = 'flex';
+  document.getElementById('pdf-drop-zone').classList.remove('drag-over');
+}
+
+function onPDFDrop(e) {
+  e.preventDefault();
+  const file = e.dataTransfer.files[0];
+  if (file && file.name.toLowerCase().endsWith('.pdf')) {
+    document.getElementById('pdf-file-input').files; // not settable, just use directly
+    onPDFSelected(file);
+  } else {
+    toast('Please drop a PDF file', 'error');
+  }
+}
+
+async function submitAdd() {
+  if (_addMode === 'url') await submitAddURL();
+  else await submitUploadPDF();
+}
+
+async function submitAddURL() {
+  const url = document.getElementById('add-url-input').value.trim();
+  if (!url) return;
+  const btn = document.getElementById('add-submit-btn');
+  btn.disabled = true;
+  btn.textContent = 'Saving…';
+  const res = await api('/api/ingest', { method: 'POST', body: { url } });
+  btn.disabled = false;
+  btn.textContent = 'Save URL';
+  closeAddModal();
+  if (res) toast('Saving in the background ⏳ · Will appear in Library shortly');
+  else toast('Failed to queue URL', 'error');
+}
+
+async function submitUploadPDF() {
+  if (!_selectedPDF) { toast('Please select a PDF file', 'error'); return; }
+  const btn = document.getElementById('add-submit-btn');
+  btn.disabled = true;
+  btn.textContent = 'Uploading…';
+  try {
+    const fd = new FormData();
+    fd.append('file', _selectedPDF);
+    const res = await fetch('/api/upload', { method: 'POST', body: fd });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Upload failed' }));
+      toast(err.detail || 'Upload failed', 'error');
+    } else {
+      toast('PDF queued for processing ⏳ · Will appear in Library shortly');
+      closeAddModal();
+    }
+  } catch (err) {
+    toast('Upload error: ' + err.message, 'error');
+  }
+  btn.disabled = false;
+  btn.textContent = 'Upload PDF';
+}
+
+// ── Real-time updates via SSE ──────────────────────────────────────────────
+let _sseSource = null;
+let _feedReloadTimer = null;
+
+function connectSSE() {
+  if (_sseSource) { _sseSource.close(); _sseSource = null; }
+  const es = new EventSource('/api/events');
+  _sseSource = es;
+  es.onmessage = e => {
+    if (e.data === ':heartbeat') return;
+    // Ignore events from a stale connection that was replaced
+    if (es !== _sseSource) { es.close(); return; }
+    try {
+      const msg = JSON.parse(e.data);
+      handleEvent(msg);
+    } catch (_) {}
+  };
+  es.onerror = () => {
+    if (es !== _sseSource) return;
+    _sseSource = null;
+    es.close();
+    setTimeout(connectSSE, 5000);
+  };
+}
+
+function handleEvent(msg) {
+  if (msg.type === 'ingestion_started') {
+    showProgressBar(true);
+    toast('⏳ Fetching: ' + shortenURL(msg.url));
+  } else if (msg.type === 'item_added') {
+    showProgressBar(false);
+    const item = msg.item;
+    if (!state.items.find(i => i.id === item.id)) {
+      state.items.unshift(item);
+    }
+    if (state.view === 'library') renderLibraryList();
+    updateLibraryBadge();
+    toast('✓ Saved: ' + (item.title || item.url), 'success');
+    if (state.view === 'feed') scheduleFeedReload();
+  } else if (msg.type === 'ingestion_failed') {
+    showProgressBar(false);
+    toast('Failed: ' + (msg.error || msg.url), 'error');
+    if (state.view === 'feed') scheduleFeedReload();
+  } else if (msg.type === 'duplicate') {
+    showProgressBar(false);
+    toast('Already saved: ' + shortenURL(msg.url));
+  }
+}
+
+function scheduleFeedReload() {
+  // Debounce: if several items finish close together, reload once at the end
+  clearTimeout(_feedReloadTimer);
+  _feedReloadTimer = setTimeout(loadFeed, 800);
+}
+
+function showProgressBar(on) {
+  document.getElementById('ingest-bar').className = on ? 'active' : '';
+}
+
+// ── Keyboard shortcuts ─────────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+    e.preventDefault();
+    openAddModal();
+  }
+  if (e.key === 'Escape') {
+    closeAddModal();
+    closeSettings();
+  }
+});
+
+// ── API helpers ────────────────────────────────────────────────────────────
+async function api(path, opts = {}) {
+  try {
+    return await apiFetch(path, opts);
+  } catch (err) {
+    toast('Network error: ' + err.message, 'error');
+    return null;
+  }
+}
+
+async function apiFetch(path, opts = {}) {
+  const fetchOpts = {
+    method: opts.method || 'GET',
+    headers: {},
+  };
+  if (opts.body) {
+    fetchOpts.headers['Content-Type'] = 'application/json';
+    fetchOpts.body = typeof opts.body === 'string' ? opts.body : JSON.stringify(opts.body);
+  }
+  const res = await fetch(path, fetchOpts);
+  if (!res.ok && res.status !== 204) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(err.detail || res.statusText);
+  }
+  if (res.status === 204) return true;
+  return res.json();
+}
+
+// ── Toast notifications ────────────────────────────────────────────────────
+function toast(msg, type = '') {
+  const el = document.createElement('div');
+  el.className = 'toast' + (type ? ' toast-' + type : '');
+  el.textContent = msg;
+  document.getElementById('toasts').appendChild(el);
+  setTimeout(() => {
+    el.style.animation = 'toastOut .25s ease forwards';
+    el.addEventListener('animationend', () => el.remove());
+  }, 3500);
+}
+
+function copyText(text) {
+  navigator.clipboard.writeText(text).then(() => toast('Copied to clipboard ✓'));
+}
+
+// ── Utility ────────────────────────────────────────────────────────────────
+function x(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function tryHost(url) {
+  if (url && url.startsWith('pdf://')) return 'PDF document';
+  try { return new URL(url).hostname.replace(/^www\./, ''); } catch (_) { return url; }
+}
+
+function isPDF(url) { return url && url.startsWith('pdf://'); }
+function pdfItemId(url) { return (url || '').replace('pdf://', '').split('/')[0]; }
+
+function shortenURL(url) {
+  try { return new URL(url).hostname; } catch (_) { return url.slice(0, 40); }
+}
+
+function relTime(ts) {
+  const ago = Math.floor(Date.now() / 1000 - ts);
+  if (ago < 60) return ago + 's ago';
+  if (ago < 3600) return Math.floor(ago / 60) + 'm ago';
+  if (ago < 86400) return Math.floor(ago / 3600) + 'h ago';
+  const d = new Date(ts * 1000);
+  return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────
+loadLibrary();
+connectSSE();
+setInterval(loadLibrary, 30000);
+</script>
+</body>
+</html>
