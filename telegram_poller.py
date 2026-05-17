@@ -17,7 +17,8 @@ from typing import Awaitable, Callable, Optional
 import httpx
 
 _TELEGRAM_BASE = "https://api.telegram.org/bot"
-_POLL_INTERVAL = 60  # seconds
+_LONG_POLL_TIMEOUT = 30   # seconds Telegram holds the connection waiting for updates
+_RETRY_DELAY = 5          # seconds to wait after an error before retrying
 _UPDATE_ID_FILE = Path.home() / ".memexa-web" / "last_update_id"
 
 _URL_RE = re.compile(r"https?://[^\s<>\"']+", re.IGNORECASE)
@@ -88,20 +89,24 @@ class TelegramPoller:
         self.is_running = True
         try:
             while True:
-                await self._poll_once()
-                await asyncio.sleep(_POLL_INTERVAL)
+                ok = await self._poll_once()
+                if not ok:
+                    await asyncio.sleep(_RETRY_DELAY)
+                # If ok (even with zero updates), loop immediately —
+                # the next long-poll call blocks in Telegram until a message arrives.
         except asyncio.CancelledError:
             pass
         finally:
             self.is_running = False
 
-    async def _poll_once(self) -> None:
+    async def _poll_once(self) -> bool:
+        """Returns True on a clean response (even if no updates), False on error."""
         url = (
             f"{_TELEGRAM_BASE}{self._token}/getUpdates"
-            f"?offset={self._last_update_id + 1}&limit=100&timeout=0"
+            f"?offset={self._last_update_id + 1}&limit=100&timeout={_LONG_POLL_TIMEOUT}"
         )
         try:
-            async with httpx.AsyncClient(timeout=30.0) as client:
+            async with httpx.AsyncClient(timeout=_LONG_POLL_TIMEOUT + 10.0) as client:
                 resp = await client.get(url)
 
             self.last_poll_time = datetime.utcnow()
@@ -113,7 +118,7 @@ class TelegramPoller:
                 )
                 self.last_error = msg
                 _err(msg)
-                return
+                return False
 
             data = resp.json()
 
@@ -121,7 +126,7 @@ class TelegramPoller:
                 desc = data.get("description", "Unknown error")
                 self.last_error = desc
                 _err(f"Telegram API error: {desc}")
-                return
+                return False
 
             self.last_error = None
             updates: list[dict] = data.get("result", [])
@@ -130,15 +135,13 @@ class TelegramPoller:
                 update_id: int = update["update_id"]
                 if update_id > self._last_update_id:
                     self._last_update_id = update_id
-
                 await self._process_update(update)
 
             if updates:
                 self._save_update_id(self._last_update_id)
-                _log(
-                    f"Polled {len(updates)} update(s); "
-                    f"last_update_id={self._last_update_id}"
-                )
+                _log(f"Polled {len(updates)} update(s); last_update_id={self._last_update_id}")
+
+            return True
 
         except asyncio.CancelledError:
             raise
@@ -146,10 +149,12 @@ class TelegramPoller:
             msg = f"Network error: {exc}"
             self.last_error = msg
             _err(msg)
+            return False
         except Exception as exc:  # noqa: BLE001
             msg = f"Unexpected error: {exc}"
             self.last_error = msg
             _err(msg)
+            return False
 
     async def _process_update(self, update: dict) -> None:
         """Extract URLs from a Telegram update dict and fire the callback."""
