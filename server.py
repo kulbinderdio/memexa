@@ -685,7 +685,7 @@ async def get_status() -> JSONResponse:
     if provider != "ollama":
         return JSONResponse({"ready": True, "provider": provider})
 
-    base_url = settings.get("ollama_base_url") or os.environ.get("OLLAMA_BASE_URL") or "http://localhost:11434"
+    base_url = os.environ.get("OLLAMA_BASE_URL") or settings.get("ollama_base_url") or "http://localhost:11434"
     chat_model = settings.get("ollama_chat_model") or "gemma4"
     embed_model = settings.get("ollama_embed_model") or "mxbai-embed-large"
 
