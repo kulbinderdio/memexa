@@ -88,7 +88,7 @@ Every URL passes through the same pipeline:
 1. **Duplicate check** — look up the URL in SQLite; skip if already saved
 2. **Extraction** — `httpx` fetches the page with realistic browser headers and `BeautifulSoup` extracts the article text. If fewer than 500 characters are recovered (JavaScript-rendered pages, SPAs), a headless **Playwright** Chromium instance fetches and renders the page fully. JSON-LD structured data and Open Graph meta tags are used as a further fallback for paywalled or thin pages.
 3. **Embedding** — the title + first 1 200 characters are sent to the embed model (default: `mxbai-embed-large` via Ollama). The resulting float vector is packed into a compact binary blob and stored in SQLite.
-4. **Summarisation** — the full article text is sent to the chat model (default: `gemma4` via Ollama) with a prompt that asks for a 2–4 sentence summary and 3–7 keyword tags, returned as JSON.
+4. **Summarisation** — the full article text is sent to the chat model (default: `gemma3:4b` via Ollama) with a prompt that asks for a 2–4 sentence summary and 3–7 keyword tags, returned as JSON.
 5. **Save** — the item (title, summary, content, tags, embedding) is written to SQLite and broadcast to all connected browsers over **Server-Sent Events**.
 
 ### Database schema
@@ -150,7 +150,7 @@ The server maintains an SSE (Server-Sent Events) endpoint at `/api/events`. The 
 | Web scraping | httpx, BeautifulSoup4 |
 | JS rendering | Playwright (Chromium headless) |
 | PDF extraction | pypdf |
-| LLM (local) | Ollama (`mxbai-embed-large` + `gemma4`) |
+| LLM (local) | Ollama (`mxbai-embed-large` + `gemma3:4b`) |
 | LLM (cloud) | OpenAI API, Anthropic Claude API |
 | Embeddings | NumPy (cosine similarity, PCA) |
 | Messaging | Telegram Bot API |
@@ -172,7 +172,7 @@ cd memexa-web
 docker compose up -d
 ```
 
-The first run takes a few minutes — the `ollama-pull` service downloads `mxbai-embed-large` (~670 MB) and `gemma4` (~3.3 GB). Subsequent starts are instant.
+The first run takes a few minutes — the `ollama-pull` service downloads `mxbai-embed-large` (~670 MB) and `gemma3:4b` (~3.3 GB). Subsequent starts are instant.
 
 Watch progress:
 
@@ -309,7 +309,7 @@ playwright install chromium
 
 ```bash
 ollama pull mxbai-embed-large   # embeddings
-ollama pull gemma4              # chat / summarisation
+ollama pull gemma3:4b              # chat / summarisation
 ```
 
 ### Run

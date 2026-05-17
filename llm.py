@@ -238,6 +238,6 @@ async def get_provider() -> LLMProvider:
     else:  # default: ollama
         return OllamaProvider(
             base_url=os.environ.get("OLLAMA_BASE_URL") or settings.get("ollama_base_url", "http://localhost:11434"),
-            chat_model=settings.get("ollama_chat_model", "gemma4:latest"),
+            chat_model=settings.get("ollama_chat_model", "gemma3:4b"),
             embed_model=settings.get("ollama_embed_model", "mxbai-embed-large"),
         )

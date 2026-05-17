@@ -28,7 +28,7 @@ services:
     entrypoint: ["/bin/sh", "-c"]
     command: >
       "ollama pull mxbai-embed-large &&
-       ollama pull gemma4"
+       ollama pull gemma3:4b"
     restart: "no"
 
   # ── Memexa web app ─────────────────────────────────────────────────────────
