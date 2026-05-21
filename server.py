@@ -159,7 +159,9 @@ async def process_url(url: str, source: str = "manual") -> None:
 
     try:
         # 2. Extract content
-        extracted = await extract(url)
+        _settings = await database.get_settings()
+        _use_archive = _settings.get("archive_fallback", "false").lower() == "true"
+        extracted = await extract(url, use_archive=_use_archive)
         title = extracted.title
         text = extracted.text
 

@@ -25,6 +25,7 @@ _DEFAULT_SETTINGS: dict[str, str] = {
     "claude_model": "claude-sonnet-4-6",
     "telegram_bot_token": "",
     "server_port": "7700",
+    "archive_fallback": "false",
 }
 
 _SCHEMA = """

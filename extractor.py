@@ -128,11 +128,39 @@ async def _playwright_extract(url: str) -> ExtractedContent | None:
         return None
 
 
+async def _archive_extract(url: str) -> ExtractedContent | None:
+    """Try to fetch the most recent archive.ph snapshot of *url*."""
+    archive_url = f"https://archive.ph/newest/{url}"
+    try:
+        async with httpx.AsyncClient(
+            headers=_BROWSER_HEADERS,
+            timeout=httpx.Timeout(20.0),
+            follow_redirects=True,
+            max_redirects=5,
+        ) as client:
+            resp = await client.get(archive_url)
+
+        # archive.ph returns 200 with a submission form when no snapshot exists
+        if resp.status_code != 200:
+            return None
+        # If we ended up back at /newest/ it means no archive was found
+        if "/newest/" in str(resp.url):
+            return None
+
+        result = _trafilatura_parse(resp.text, str(resp.url))
+        if result:
+            result.via_browser = False
+        return result
+    except Exception as exc:
+        print(f"[archive] failed for {url}: {exc}", file=sys.stderr)
+        return None
+
+
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
 
-async def extract(url: str) -> ExtractedContent:
+async def extract(url: str, use_archive: bool = False) -> ExtractedContent:
     async with httpx.AsyncClient(
         headers=_BROWSER_HEADERS,
         timeout=httpx.Timeout(20.0),
@@ -157,9 +185,20 @@ async def extract(url: str) -> ExtractedContent:
     pw = await _playwright_extract(url)
     if pw and len(pw.text) > fast_len:
         print(f"[extractor] browser got {len(pw.text)} chars", file=sys.stderr)
-        return pw
+        if len(pw.text) >= _PW_FALLBACK_THRESHOLD:
+            return pw
 
-    return fast or ExtractedContent(title=_bs_title(response.text, url), text="")
+    best_so_far = pw if (pw and len(pw.text) > fast_len) else fast
+    best_len = len(best_so_far.text) if best_so_far else 0
+
+    if use_archive and best_len < _PW_FALLBACK_THRESHOLD:
+        print(f"[extractor] trying archive.ph fallback: {url}", file=sys.stderr)
+        archived = await _archive_extract(url)
+        if archived and len(archived.text) > best_len:
+            print(f"[extractor] archive got {len(archived.text)} chars", file=sys.stderr)
+            return archived
+
+    return best_so_far or ExtractedContent(title=_bs_title(response.text, url), text="")
 
 
 # Keep parse_html as a public entry point (used by Playwright path in tests)

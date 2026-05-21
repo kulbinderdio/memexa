@@ -1002,6 +1002,20 @@ button:disabled { opacity: .45; cursor: not-allowed; }
 }
 .feed-entry:hover .feed-del-btn { opacity: 1; }
 
+/* ── Toggle switch ───────────────────────────────────────────────────────── */
+.toggle-switch { position:relative; display:inline-block; width:36px; height:20px; flex-shrink:0; margin-top:2px; }
+.toggle-switch input { opacity:0; width:0; height:0; }
+.toggle-track {
+  position:absolute; inset:0; border-radius:20px;
+  background:var(--surface-3); cursor:pointer; transition:.2s;
+}
+.toggle-track::before {
+  content:''; position:absolute; width:14px; height:14px; border-radius:50%;
+  background:#fff; left:3px; top:3px; transition:.2s;
+}
+.toggle-switch input:checked + .toggle-track { background:var(--accent); }
+.toggle-switch input:checked + .toggle-track::before { transform:translateX(16px); }
+
 /* ── Digest view ─────────────────────────────────────────────────────────── */
 .digest-list {
   flex: 1;
@@ -1746,6 +1760,19 @@ button:disabled { opacity: .45; cursor: not-allowed; }
         3. Send URLs to the bot — Memexa saves them automatically
       </div>
     </div>
+    <div class="settings-section">
+      <div class="settings-section-title">Extraction</div>
+      <div class="settings-row" style="align-items:flex-start">
+        <div>
+          <div class="settings-row-label">archive.ph fallback</div>
+          <div class="settings-row-sub">When an article can't be extracted, try the most recent archive.ph snapshot. Useful for paywalled articles.</div>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="s-archive-fallback">
+          <span class="toggle-track"></span>
+        </label>
+      </div>
+    </div>
   </div>
   <div class="settings-footer">
     <button class="btn btn-ghost" style="flex:1" onclick="closeSettings()">Cancel</button>
@@ -2441,6 +2468,7 @@ async function loadSettings() {
   document.getElementById('s-claude-key').value   = s.claude_api_key || '';
   document.getElementById('s-claude-model').value = s.claude_model || '';
   document.getElementById('s-telegram-token').value = s.telegram_bot_token || '';
+  document.getElementById('s-archive-fallback').checked = s.archive_fallback === 'true';
   selectProvider(s.llm_provider || 'ollama');
 }
 
@@ -2466,7 +2494,8 @@ async function saveSettings() {
     openai_model:       document.getElementById('s-openai-model').value,
     claude_api_key:     document.getElementById('s-claude-key').value,
     claude_model:       document.getElementById('s-claude-model').value,
-    telegram_bot_token: document.getElementById('s-telegram-token').value,
+    telegram_bot_token:  document.getElementById('s-telegram-token').value,
+    archive_fallback:    document.getElementById('s-archive-fallback').checked ? 'true' : 'false',
   };
 
   const res = await api('/api/settings', { method: 'PUT', body: payload });
