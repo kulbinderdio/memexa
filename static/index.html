@@ -1002,6 +1002,72 @@ button:disabled { opacity: .45; cursor: not-allowed; }
 }
 .feed-entry:hover .feed-del-btn { opacity: 1; }
 
+/* ── Digest view ─────────────────────────────────────────────────────────── */
+.digest-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 740px;
+  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+}
+.digest-card {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px 24px;
+}
+.digest-card-header {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.digest-week-label {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+}
+.digest-item-count {
+  font-size: 12px;
+  color: var(--text-3);
+}
+.digest-generated-at {
+  font-size: 11px;
+  color: var(--text-3);
+  margin-left: auto;
+}
+.digest-body {
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--text-2);
+  white-space: pre-wrap;
+}
+.digest-empty {
+  font-size: 13px;
+  color: var(--text-3);
+  font-style: italic;
+  margin-bottom: 12px;
+}
+.digest-actions {
+  margin-top: 14px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.digest-spinner {
+  display: inline-block;
+  width: 14px; height: 14px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin .8s linear infinite;
+}
+
 /* ── Settings panel ──────────────────────────────────────────────────────── */
 #overlay {
   position: fixed;
@@ -1438,6 +1504,10 @@ button:disabled { opacity: .45; cursor: not-allowed; }
       <div class="nav-icon">📥</div>
       <span>Feed</span>
     </div>
+    <div class="nav-item" data-view="digest" onclick="showView('digest')">
+      <div class="nav-icon">📓</div>
+      <span>Digest</span>
+    </div>
   </nav>
 
   <div class="sidebar-footer">
@@ -1567,6 +1637,16 @@ button:disabled { opacity: .45; cursor: not-allowed; }
     </div>
   </section>
 
+  <!-- Digest -->
+  <section class="view" id="view-digest">
+    <div class="topbar">
+      <span class="topbar-title">Weekly Digest</span>
+    </div>
+    <div id="digest-list" class="digest-list">
+      <div class="loading-row"><div class="spinner"></div> Loading…</div>
+    </div>
+  </section>
+
 </div><!-- /#main -->
 
 <!-- ── Mobile nav ────────────────────────────────────────────────────────── -->
@@ -1586,6 +1666,9 @@ button:disabled { opacity: .45; cursor: not-allowed; }
     </div>
     <div class="mob-item" data-view="feed" onclick="showView('feed')">
       <div class="mob-item-icon">📥</div><span>Feed</span>
+    </div>
+    <div class="mob-item" data-view="digest" onclick="showView('digest')">
+      <div class="mob-item-icon">📓</div><span>Digest</span>
     </div>
   </div>
 </nav>
@@ -1766,6 +1849,7 @@ function showView(name) {
   else if (name === 'map') loadMap();
   else if (name === 'feed') loadFeed();
   else if (name === 'synthesise') initSynth();
+  else if (name === 'digest') loadDigests();
 }
 
 // ── Library ────────────────────────────────────────────────────────────────
@@ -2622,6 +2706,60 @@ function relTime(ts) {
   if (ago < 86400) return Math.floor(ago / 3600) + 'h ago';
   const d = new Date(ts * 1000);
   return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+}
+
+// ── Digest ─────────────────────────────────────────────────────────────────
+
+function _fmtWeek(week_start, week_end) {
+  const fmt = d => new Date(d + 'T12:00:00').toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+  const fmtShort = d => new Date(d + 'T12:00:00').toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+  return `${fmtShort(week_start)} – ${fmt(week_end)}`;
+}
+
+async function loadDigests() {
+  const el = document.getElementById('digest-list');
+  el.innerHTML = '<div class="loading-row"><div class="spinner"></div> Loading…</div>';
+  const weeks = await api('/api/digests');
+  if (!weeks) return;
+  if (!weeks.length) {
+    el.innerHTML = '<div class="detail-empty" style="height:100%"><div class="detail-empty-icon">📓</div><div class="detail-empty-title">No items yet</div><div class="detail-empty-sub">Save some articles and come back to generate your first weekly digest.</div></div>';
+    return;
+  }
+  el.innerHTML = weeks.map(w => _digestCardHTML(w)).join('');
+}
+
+function _digestCardHTML(w) {
+  const label = _fmtWeek(w.week_start, w.week_end);
+  const genAt = w.generated_at ? new Date(w.generated_at).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : '';
+  const bodyHTML = w.has_digest
+    ? `<div class="digest-body">${x(w.summary)}</div>`
+    : `<div class="digest-empty">No digest generated yet for this week.</div>`;
+  const btnLabel = w.has_digest ? 'Regenerate' : 'Generate digest';
+  return `
+  <div class="digest-card" id="digest-card-${w.week_start}">
+    <div class="digest-card-header">
+      <span class="digest-week-label">${label}</span>
+      <span class="digest-item-count">${w.item_count} article${w.item_count !== 1 ? 's' : ''}</span>
+      ${genAt ? `<span class="digest-generated-at">Generated ${genAt}</span>` : ''}
+    </div>
+    ${bodyHTML}
+    <div class="digest-actions" id="digest-actions-${w.week_start}">
+      <button class="btn btn-primary btn-sm" onclick="generateDigest('${w.week_start}', this)">${btnLabel}</button>
+    </div>
+  </div>`;
+}
+
+async function generateDigest(weekStart, btn) {
+  const actionsEl = document.getElementById('digest-actions-' + weekStart);
+  actionsEl.innerHTML = '<span class="digest-spinner"></span><span style="font-size:13px;color:var(--text-3);margin-left:8px">Generating…</span>';
+  const data = await api('/api/digests/' + weekStart, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+  if (!data) {
+    actionsEl.innerHTML = '<button class="btn btn-primary btn-sm" onclick="generateDigest(\'' + weekStart + '\', this)">Retry</button><span style="font-size:12px;color:var(--red);margin-left:8px">Generation failed</span>';
+    return;
+  }
+  const card = document.getElementById('digest-card-' + weekStart);
+  card.querySelector('.digest-body, .digest-empty').outerHTML = `<div class="digest-body">${x(data.summary)}</div>`;
+  actionsEl.innerHTML = '<button class="btn btn-ghost btn-sm" onclick="generateDigest(\'' + weekStart + '\', this)">Regenerate</button>';
 }
 
 // ── Model readiness banner ─────────────────────────────────────────────────

@@ -13,6 +13,7 @@ import os
 import socket
 import sys
 import uuid
+from datetime import date, timedelta
 
 import httpx
 from contextlib import asynccontextmanager
@@ -29,13 +30,18 @@ from db import (
     clear_log,
     delete_item,
     delete_log_entry,
+    fetch_all_digests,
     fetch_all_items,
+    fetch_digest,
     fetch_item,
     fetch_item_by_url,
+    fetch_item_weeks,
+    fetch_items_for_week,
     fetch_items_with_embeddings,
     fetch_log,
     init_db,
     pack_embedding,
+    save_digest,
     save_item,
     save_log,
     text_search,
@@ -767,6 +773,85 @@ async def get_status() -> JSONResponse:
 
     missing = [m for m in [chat_model, embed_model] if m.split(":")[0] not in available]
     return JSONResponse({"ready": not missing, "provider": "ollama", "missing_models": missing, "ollama_reachable": True, "pulling": _pull_status})
+
+
+# ---------------------------------------------------------------------------
+# Routes: weekly digests
+# ---------------------------------------------------------------------------
+
+@app.get("/api/digests")
+async def list_digests_route() -> JSONResponse:
+    weeks = await fetch_item_weeks()
+    digests = {d["week_start"]: d for d in await fetch_all_digests()}
+    result = []
+    for w in weeks:
+        ws = w["week_start"]
+        we = (date.fromisoformat(ws) + timedelta(days=6)).isoformat()
+        d = digests.get(ws)
+        result.append({
+            "week_start": ws,
+            "week_end": we,
+            "item_count": w["item_count"],
+            "has_digest": d is not None,
+            "summary": d["summary"] if d else None,
+            "generated_at": d["created_at"] if d else None,
+        })
+    return JSONResponse(result)
+
+
+@app.post("/api/digests/{week_start}")
+async def generate_digest_route(week_start: str) -> JSONResponse:
+    try:
+        ws_date = date.fromisoformat(week_start)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid week_start date (use YYYY-MM-DD)")
+
+    week_end = (ws_date + timedelta(days=6)).isoformat()
+    items = await fetch_items_for_week(week_start)
+    if not items:
+        raise HTTPException(status_code=404, detail="No items found for this week")
+
+    provider = await get_provider()
+
+    lines = []
+    for i, item in enumerate(items, 1):
+        tags = json.loads(item.get("tags_json") or "[]")
+        tag_str = ", ".join(tags) if tags else ""
+        summary = (item.get("summary") or "").strip()
+        line = f"{i}. {item['title']}"
+        if summary:
+            line += f"\n   {summary}"
+        if tag_str:
+            line += f"\n   Tags: {tag_str}"
+        lines.append(line)
+
+    week_label = f"{ws_date.strftime('%d %b')} – {(ws_date + timedelta(days=6)).strftime('%d %b %Y')}"
+    messages = [
+        {
+            "role": "user",
+            "content": (
+                f"Here are the {len(items)} articles I saved to my personal knowledge base "
+                f"during the week of {week_label}:\n\n"
+                + "\n\n".join(lines)
+                + "\n\nPlease write a brief, friendly weekly digest (3–4 short paragraphs) that:\n"
+                "- Identifies the main themes and topics I was reading about\n"
+                "- Highlights the most interesting or significant articles\n"
+                "- Notes any patterns or connections between the articles\n"
+                "- Ends with one sentence reflecting on what this week's reading says about my interests\n\n"
+                "Write in a warm, personal tone as if you're a reading companion reflecting on my week."
+            ),
+        }
+    ]
+
+    summary = await provider.chat(messages)
+    await save_digest(week_start, week_end, summary, len(items))
+    return JSONResponse({
+        "week_start": week_start,
+        "week_end": week_end,
+        "item_count": len(items),
+        "summary": summary,
+        "has_digest": True,
+    })
 
 
 # ---------------------------------------------------------------------------

@@ -28,6 +28,15 @@ _DEFAULT_SETTINGS: dict[str, str] = {
 }
 
 _SCHEMA = """
+CREATE TABLE IF NOT EXISTS weekly_digests (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    week_start  DATE NOT NULL UNIQUE,
+    week_end    DATE NOT NULL,
+    summary     TEXT,
+    item_count  INTEGER,
+    created_at  DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS items (
     id          TEXT PRIMARY KEY,
     url         TEXT UNIQUE NOT NULL,
@@ -259,6 +268,70 @@ async def fetch_log(limit: int = 200) -> list[dict]:
             "SELECT id, timestamp, url, source, status, title, error_message "
             "FROM ingest_log ORDER BY id DESC LIMIT ?",
             (limit,),
+        ) as cur:
+            rows = await cur.fetchall()
+    return [_row_to_dict(r) for r in rows]
+
+
+async def fetch_item_weeks() -> list[dict]:
+    """Return one row per week that has items, newest first."""
+    async with aiosqlite.connect(_db_path()) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            """
+            SELECT
+                date(created_at, '-' || ((strftime('%w', created_at) + 6) % 7) || ' days') AS week_start,
+                COUNT(*) AS item_count
+            FROM items
+            GROUP BY week_start
+            ORDER BY week_start DESC
+            """
+        ) as cur:
+            rows = await cur.fetchall()
+    return [_row_to_dict(r) for r in rows]
+
+
+async def fetch_items_for_week(week_start: str) -> list[dict]:
+    """Return items whose week (Mon–Sun) starts on week_start (YYYY-MM-DD)."""
+    async with aiosqlite.connect(_db_path()) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            "SELECT id, url, title, summary, tags_json, created_at FROM items "
+            "WHERE date(created_at, '-' || ((strftime('%w', created_at) + 6) % 7) || ' days') = ? "
+            "ORDER BY created_at ASC",
+            (week_start,),
+        ) as cur:
+            rows = await cur.fetchall()
+    return [_row_to_dict(r) for r in rows]
+
+
+async def save_digest(week_start: str, week_end: str, summary: str, item_count: int) -> None:
+    async with aiosqlite.connect(_db_path()) as db:
+        await db.execute(
+            "INSERT INTO weekly_digests (week_start, week_end, summary, item_count) VALUES (?, ?, ?, ?) "
+            "ON CONFLICT(week_start) DO UPDATE SET "
+            "week_end=excluded.week_end, summary=excluded.summary, "
+            "item_count=excluded.item_count, created_at=CURRENT_TIMESTAMP",
+            (week_start, week_end, summary, item_count),
+        )
+        await db.commit()
+
+
+async def fetch_digest(week_start: str) -> dict | None:
+    async with aiosqlite.connect(_db_path()) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            "SELECT * FROM weekly_digests WHERE week_start=?", (week_start,)
+        ) as cur:
+            row = await cur.fetchone()
+    return _row_to_dict(row) if row else None
+
+
+async def fetch_all_digests() -> list[dict]:
+    async with aiosqlite.connect(_db_path()) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            "SELECT * FROM weekly_digests ORDER BY week_start DESC"
         ) as cur:
             rows = await cur.fetchall()
     return [_row_to_dict(r) for r in rows]
