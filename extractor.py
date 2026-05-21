@@ -1,28 +1,27 @@
 """
-Web content extractor using httpx + BeautifulSoup4 with a Playwright fallback
-for JavaScript-rendered pages.
+Web content extractor — trafilatura for content quality, Playwright for JS pages.
 
 Flow:
-  1. Fast path — httpx fetch + BeautifulSoup parse (< 1 s typical)
-  2. If extracted text < 500 chars, try Playwright headless Chromium
-  3. Return whichever path produced more content
+  1. httpx fetch → trafilatura extract
+  2. If text < 500 chars, escalate to Playwright headless Chromium
+  3. Playwright dismisses common popups before extraction
+  4. Both paths use trafilatura; BeautifulSoup only for title fallback
 """
 
 from __future__ import annotations
 
 import asyncio
-import json
-import re
 import sys
 from dataclasses import dataclass
-from functools import lru_cache
 from urllib.parse import urlparse
 
 import httpx
+import trafilatura
+import trafilatura.settings
 from bs4 import BeautifulSoup, Tag
 
-_MAX_BODY_BYTES = 800 * 1024  # 800 KB
-_PW_FALLBACK_THRESHOLD = 500  # chars — below this, escalate to real browser
+_MAX_BODY_BYTES = 800 * 1024
+_PW_FALLBACK_THRESHOLD = 500
 
 _BROWSER_HEADERS = {
     "User-Agent": (
@@ -32,56 +31,33 @@ _BROWSER_HEADERS = {
     ),
     "Accept": (
         "text/html,application/xhtml+xml,application/xml;q=0.9,"
-        "image/avif,image/webp,image/apng,*/*;q=0.8,"
-        "application/signed-exchange;v=b3;q=0.7"
+        "image/avif,image/webp,image/apng,*/*;q=0.8"
     ),
     "Accept-Language": "en-US,en;q=0.9",
     "Accept-Encoding": "gzip, deflate",
-    "Sec-CH-UA": '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"',
-    "Sec-CH-UA-Mobile": "?0",
-    "Sec-CH-UA-Platform": '"macOS"',
     "Sec-Fetch-Dest": "document",
     "Sec-Fetch-Mode": "navigate",
     "Sec-Fetch-Site": "none",
-    "Sec-Fetch-User": "?1",
     "Upgrade-Insecure-Requests": "1",
-    "Cache-Control": "max-age=0",
-    "Connection": "keep-alive",
 }
 
-_CONTENT_SELECTORS = [
-    "article",
-    "main",
-    "[role='main']",
-    ".td-post-content",
-    ".post-content",
-    ".article-body",
-    ".article-content",
-    ".entry-content",
-    ".post-body",
-    ".story-body",
-    ".content-body",
-    ".markdown-body",
-    ".prose",
-    ".docs-content",
-    ".doc-content",
-    ".documentation",
-    ".content",
-    "#content",
-    "#main-content",
-]
-
-_NOISE_CLASS_FRAGMENTS = [
-    "nav", "footer", "header", "sidebar", "menu", "cookie", "banner",
-    r"\bad\b", r"\bad-", r"-ad\b",   # "ad" only at word/hyphen boundary
-]
-
-# Tags whose classes should never be checked — stripping these would gut the page
-_NOISE_CLASS_SKIP_TAGS = frozenset(["html", "body", "article", "main", "section", "div"])
-
-_NOISE_TAGS = [
-    "nav", "header", "footer", "script", "style", "noscript",
-    "iframe", "form", "button",
+# Selectors for popup close/accept buttons to dismiss before extracting
+_POPUP_DISMISS_SELECTORS = [
+    # Cookie consent
+    'button:has-text("Accept all")',
+    'button:has-text("Accept cookies")',
+    'button:has-text("Accept")',
+    'button:has-text("I agree")',
+    'button:has-text("Got it")',
+    'button:has-text("OK")',
+    'button:has-text("Agree")',
+    # Generic close buttons
+    '[aria-label="Close"]',
+    '[aria-label="Dismiss"]',
+    '.cookie-accept',
+    '#accept-cookies',
+    '#cookie-accept',
+    '.js-accept-cookies',
 ]
 
 
@@ -102,7 +78,6 @@ _pw_lock: asyncio.Lock | None = None
 
 
 async def _get_pw_browser():
-    """Return a shared Playwright Chromium browser, launching it if needed."""
     global _pw_instance, _pw_browser, _pw_lock
     if _pw_lock is None:
         _pw_lock = asyncio.Lock()
@@ -115,7 +90,6 @@ async def _get_pw_browser():
 
 
 async def _playwright_extract(url: str) -> ExtractedContent | None:
-    """Fetch *url* with a real headless browser. Returns None on any failure."""
     try:
         browser = await _get_pw_browser()
         ctx = await browser.new_context(
@@ -128,13 +102,26 @@ async def _playwright_extract(url: str) -> ExtractedContent | None:
             try:
                 await page.goto(url, wait_until="networkidle", timeout=25_000)
             except Exception:
-                # networkidle timeout is common — use whatever loaded so far
-                pass
+                pass  # use whatever loaded
+
+            # Dismiss common popups before extracting
+            for selector in _POPUP_DISMISS_SELECTORS:
+                try:
+                    btn = page.locator(selector).first
+                    if await btn.is_visible(timeout=500):
+                        await btn.click(timeout=500)
+                        await page.wait_for_timeout(400)
+                        break
+                except Exception:
+                    continue
+
             html = await page.content()
         finally:
             await ctx.close()
-        result = parse_html(html, base_url=url)
-        result.via_browser = True
+
+        result = _trafilatura_parse(html, url)
+        if result:
+            result.via_browser = True
         return result
     except Exception as exc:
         print(f"[playwright] failed for {url}: {exc}", file=sys.stderr)
@@ -146,13 +133,6 @@ async def _playwright_extract(url: str) -> ExtractedContent | None:
 # ---------------------------------------------------------------------------
 
 async def extract(url: str) -> ExtractedContent:
-    """Fetch *url* and return its readable text.
-
-    Raises:
-        ValueError: For 404 or 5xx responses.
-        httpx.HTTPError: For network-level failures.
-    """
-    # --- Fast path: httpx ---------------------------------------------------
     async with httpx.AsyncClient(
         headers=_BROWSER_HEADERS,
         timeout=httpx.Timeout(20.0),
@@ -161,155 +141,90 @@ async def extract(url: str) -> ExtractedContent:
     ) as client:
         response = await client.get(url)
 
-    status = response.status_code
-    if status == 404:
+    if response.status_code == 404:
         raise ValueError(f"Page not found: {url}")
-    if status >= 500:
-        raise ValueError(f"Server error ({status}): {url}")
+    if response.status_code >= 500:
+        raise ValueError(f"Server error ({response.status_code}): {url}")
 
-    fast = parse_html(response.text, base_url=url)
+    fast = _trafilatura_parse(response.text, url)
 
-    if len(fast.text) >= _PW_FALLBACK_THRESHOLD:
+    if fast and len(fast.text) >= _PW_FALLBACK_THRESHOLD:
         return fast
 
-    # --- Slow path: Playwright headless browser ------------------------------
-    print(f"[extractor] thin content ({len(fast.text)} chars), trying browser: {url}", file=sys.stderr)
+    fast_len = len(fast.text) if fast else 0
+    print(f"[extractor] thin content ({fast_len} chars), trying browser: {url}", file=sys.stderr)
+
     pw = await _playwright_extract(url)
-    if pw and len(pw.text) > len(fast.text):
+    if pw and len(pw.text) > fast_len:
         print(f"[extractor] browser got {len(pw.text)} chars", file=sys.stderr)
         return pw
 
-    return fast
+    return fast or ExtractedContent(title=_bs_title(response.text, url), text="")
 
 
-# ---------------------------------------------------------------------------
-# HTML parsing
-# ---------------------------------------------------------------------------
-
+# Keep parse_html as a public entry point (used by Playwright path in tests)
 def parse_html(html: str, base_url: str) -> ExtractedContent:
-    raw = html
-    if len(raw.encode("utf-8", errors="replace")) > _MAX_BODY_BYTES:
-        body_start = raw.lower().find("<body")
-        raw = raw[body_start: body_start + _MAX_BODY_BYTES] if body_start != -1 else raw[:_MAX_BODY_BYTES]
-
-    soup = BeautifulSoup(raw, "html.parser")
-
-    title = _extract_title(soup, base_url)
-    jsonld_text = _extract_jsonld(soup)
-    meta_text = _extract_meta(soup)
-
-    _strip_noise(soup)
-    text = _extract_content(soup)
-
-    # Supplement with SEO metadata when DOM content is thin
-    if len(text) < 150:
-        text = max([jsonld_text, meta_text, text], key=len)
-
-    return ExtractedContent(title=title, text=text)
+    result = _trafilatura_parse(html, base_url)
+    return result or ExtractedContent(title=_bs_title(html, base_url), text="")
 
 
 # ---------------------------------------------------------------------------
-# Private helpers
+# Trafilatura extraction
 # ---------------------------------------------------------------------------
 
-def _extract_title(soup: BeautifulSoup, base_url: str) -> str:
-    h1 = soup.find("h1")
-    if h1 and isinstance(h1, Tag):
-        t = h1.get_text(strip=True)
-        if t:
-            return t
-    title_tag = soup.find("title")
-    if title_tag and isinstance(title_tag, Tag):
-        t = title_tag.get_text(strip=True)
-        if t:
-            return t
+def _trafilatura_parse(html: str, url: str) -> ExtractedContent | None:
+    if len(html.encode("utf-8", errors="replace")) > _MAX_BODY_BYTES:
+        html = html[:_MAX_BODY_BYTES]
+
+    # bare_extraction returns a dict with text, title, author, etc.
+    data = trafilatura.bare_extraction(
+        html,
+        url=url,
+        include_comments=False,
+        include_tables=True,
+        favor_recall=True,
+        with_metadata=True,
+    )
+
+    if data:
+        text = (data.get("text") or "").strip()
+        title = (data.get("title") or "").strip() or _bs_title(html, url)
+        if text:
+            return ExtractedContent(title=title, text=text)
+
+    # trafilatura found nothing — try a simpler extract() call as fallback
+    text = trafilatura.extract(
+        html,
+        url=url,
+        include_comments=False,
+        favor_recall=True,
+    )
+    if text:
+        return ExtractedContent(title=_bs_title(html, url), text=text.strip())
+
+    return None
+
+
+# ---------------------------------------------------------------------------
+# Title fallback (BeautifulSoup, used when trafilatura metadata is absent)
+# ---------------------------------------------------------------------------
+
+def _bs_title(html: str, url: str) -> str:
     try:
-        return urlparse(base_url).hostname or base_url
+        soup = BeautifulSoup(html[:200_000], "html.parser")
+        h1 = soup.find("h1")
+        if h1 and isinstance(h1, Tag):
+            t = h1.get_text(strip=True)
+            if t:
+                return t
+        tag = soup.find("title")
+        if tag and isinstance(tag, Tag):
+            t = tag.get_text(strip=True)
+            if t:
+                return t
     except Exception:
-        return base_url
-
-
-@lru_cache(maxsize=None)
-def _noise_patterns():
-    return [re.compile(p) for p in _NOISE_CLASS_FRAGMENTS]
-
-
-def _class_is_noisy(tag: Tag) -> bool:
-    if tag.name in _NOISE_CLASS_SKIP_TAGS:
-        return False
-    classes = tag.get("class", [])
-    if isinstance(classes, str):
-        classes = [classes]
-    joined = " ".join(classes).lower()
-    return any(p.search(joined) for p in _noise_patterns())
-
-
-def _strip_noise(soup: BeautifulSoup) -> None:
-    for tag_name in _NOISE_TAGS:
-        for tag in soup.find_all(tag_name):
-            tag.decompose()
-    for tag in soup.find_all(True):
-        if isinstance(tag, Tag) and tag.attrs is not None and _class_is_noisy(tag):
-            tag.decompose()
-
-
-def _extract_content(soup: BeautifulSoup) -> str:
-    for selector in _CONTENT_SELECTORS:
-        for el in soup.select(selector):
-            text = el.get_text(separator="\n", strip=True)
-            if len(text) > 100:
-                return _clean_text(text)
-    body = soup.find("body")
-    container = body if body else soup
-    text = container.get_text(separator="\n", strip=True) if isinstance(container, Tag) else soup.get_text(separator="\n", strip=True)
-    return _clean_text(text)
-
-
-_MULTI_BLANK = re.compile(r"\n{3,}")
-
-
-def _clean_text(text: str) -> str:
-    return _MULTI_BLANK.sub("\n\n", text).strip()
-
-
-# ---------------------------------------------------------------------------
-# JSON-LD and meta tag fallbacks
-# ---------------------------------------------------------------------------
-
-_LD_FIELDS = ("articleBody", "description", "abstract")
-_META_OG = ("og:description", "twitter:description")
-_META_NAME = ("description",)
-
-
-def _extract_jsonld(soup: BeautifulSoup) -> str:
-    best = ""
-    for script in soup.find_all("script", type="application/ld+json"):
-        raw = script.string or ""
-        try:
-            data = json.loads(raw)
-        except Exception:
-            continue
-        for obj in (data if isinstance(data, list) else [data]):
-            if not isinstance(obj, dict):
-                continue
-            for field in _LD_FIELDS:
-                val = obj.get(field, "")
-                if isinstance(val, str) and len(val) > len(best):
-                    best = val
-    return best.strip()
-
-
-def _extract_meta(soup: BeautifulSoup) -> str:
-    for prop in _META_OG:
-        tag = soup.find("meta", property=prop)
-        if tag and isinstance(tag, Tag):
-            val = tag.get("content", "")
-            if isinstance(val, str) and val.strip():
-                return val.strip()
-    for name in _META_NAME:
-        tag = soup.find("meta", attrs={"name": name})
-        if tag and isinstance(tag, Tag):
-            val = tag.get("content", "")
-            if isinstance(val, str) and val.strip():
-                return val.strip()
-    return ""
+        pass
+    try:
+        return urlparse(url).hostname or url
+    except Exception:
+        return url
