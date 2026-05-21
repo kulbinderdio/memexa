@@ -1073,6 +1073,49 @@ button:disabled { opacity: .45; cursor: not-allowed; }
   font-style: italic;
   margin-bottom: 12px;
 }
+.digest-sources {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.digest-sources-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+}
+
+.digest-source-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  color: var(--accent);
+  cursor: pointer;
+  padding: 3px 0;
+  transition: color var(--transition);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  text-decoration: none;
+}
+
+.digest-source-link:hover { color: var(--accent-2); text-decoration: underline; }
+
+.digest-source-link::before {
+  content: '↗';
+  font-size: 11px;
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
 .digest-actions {
   margin-top: 14px;
   display: flex;
@@ -2763,6 +2806,14 @@ async function loadDigests() {
   el.innerHTML = weeks.map(w => _digestCardHTML(w)).join('');
 }
 
+function _digestSourcesHTML(items) {
+  if (!items || !items.length) return '';
+  const links = items.map(it =>
+    `<span class="digest-source-link" onclick="openItemFromDigest('${it.id}')" title="${x(it.title)}">${x(it.title)}</span>`
+  ).join('');
+  return `<div class="digest-sources"><div class="digest-sources-label">Articles this week</div>${links}</div>`;
+}
+
 function _digestCardHTML(w) {
   const label = _fmtWeek(w.week_start, w.week_end);
   const genAt = w.generated_at ? new Date(w.generated_at).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : '';
@@ -2778,10 +2829,16 @@ function _digestCardHTML(w) {
       ${genAt ? `<span class="digest-generated-at">Generated ${genAt}</span>` : ''}
     </div>
     ${bodyHTML}
+    ${_digestSourcesHTML(w.items)}
     <div class="digest-actions" id="digest-actions-${w.week_start}">
       <button class="btn btn-primary btn-sm" onclick="generateDigest('${w.week_start}', this)">${btnLabel}</button>
     </div>
   </div>`;
+}
+
+function openItemFromDigest(id) {
+  showView('library');
+  selectItem(id, 'lib');
 }
 
 async function generateDigest(weekStart, btn) {

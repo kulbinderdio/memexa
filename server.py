@@ -790,6 +790,7 @@ async def list_digests_route() -> JSONResponse:
         ws = w["week_start"]
         we = (date.fromisoformat(ws) + timedelta(days=6)).isoformat()
         d = digests.get(ws)
+        items = await fetch_items_for_week(ws)
         result.append({
             "week_start": ws,
             "week_end": we,
@@ -797,6 +798,7 @@ async def list_digests_route() -> JSONResponse:
             "has_digest": d is not None,
             "summary": d["summary"] if d else None,
             "generated_at": d["created_at"] if d else None,
+            "items": [{"id": it["id"], "title": it["title"] or it["url"]} for it in items],
         })
     return JSONResponse(result)
 
