@@ -1914,6 +1914,7 @@ const state = {
   searchSelId: null,
   mapDots: [],
   mapItems: [],
+  mapTagFilters: [],
   feedLog: [],
   settings: {},
   synth: { query: '', response: '', loading: false },
@@ -2272,6 +2273,7 @@ async function loadMap() {
 
   document.getElementById('map-empty').style.display = 'none';
   state.mapItems = data;
+  state.mapTagFilters = [];
   _map.scale = 1; _map.offX = 0; _map.offY = 0;
   renderMap();
 }
@@ -2328,10 +2330,14 @@ function renderMap() {
   }
 
   // Draw dots and store base-space positions for hit testing
+  const hasFilter = state.mapTagFilters.length > 0;
   state.mapDots = state.mapItems.map(item => {
     const px = bx(item), py = by(item);
     const color = tagColor(item.tags[0]);
+    const matched = !hasFilter || item.tags.some(t => state.mapTagFilters.includes(t));
+    const alpha = matched ? 1 : 0.1;
 
+    ctx.globalAlpha = alpha;
     ctx.beginPath();
     ctx.arc(px, py, 11, 0, Math.PI * 2);
     ctx.fillStyle = color + '22';
@@ -2347,21 +2353,33 @@ function renderMap() {
     ctx.strokeStyle = 'rgba(255,255,255,.5)';
     ctx.lineWidth = 1.5 / _map.scale;
     ctx.stroke();
+    ctx.globalAlpha = 1;
 
     return { item, px, py }; // base-space coords
   });
 
   ctx.restore();
 
-  // Build legend
+  // Build legend with clickable filter rows
   const topTags = [...new Set(state.mapItems.flatMap(i => i.tags.slice(0, 1)).filter(Boolean))].slice(0, 8);
   if (topTags.length > 1) {
     const leg = document.getElementById('map-legend');
     leg.style.display = '';
-    document.getElementById('map-legend-items').innerHTML = topTags.map(t =>
-      `<div class="legend-row"><div class="legend-dot" style="background:${tagColor(t)}"></div>${x(t)}</div>`
-    ).join('');
+    document.getElementById('map-legend-items').innerHTML = topTags.map(t => {
+      const active = state.mapTagFilters.includes(t);
+      return `<div class="legend-row${active ? ' legend-row-active' : ''}" onclick="toggleMapTag('${x(t)}')" style="cursor:pointer;border-radius:5px;padding:2px 4px;margin:-2px -4px;transition:background .15s${active ? ';background:var(--surface-3)' : ''}">
+        <div class="legend-dot" style="background:${tagColor(t)};${active ? '' : 'opacity:.7'}"></div>
+        <span style="${active ? 'font-weight:600;color:var(--text)' : ''}">${x(t)}</span>
+      </div>`;
+    }).join('');
   }
+}
+
+function toggleMapTag(tag) {
+  const idx = state.mapTagFilters.indexOf(tag);
+  if (idx >= 0) state.mapTagFilters.splice(idx, 1);
+  else state.mapTagFilters.push(tag);
+  renderMap();
 }
 
 // Map interactions
@@ -2805,7 +2823,7 @@ function x(s) {
   return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-function tagColor(text) {
+function tagClass(text) {
   const palette = ['indigo','purple','teal','green','orange','amber'];
   let h = 0;
   for (let i = 0; i < text.length; i++) h = (h * 31 + text.charCodeAt(i)) >>> 0;
@@ -2814,7 +2832,7 @@ function tagColor(text) {
 
 function renderTag(t) {
   const active = state.tagFilters.includes(t);
-  const cls = active ? `tag ${tagColor(t)} tag-active` : `tag ${tagColor(t)}`;
+  const cls = active ? `tag ${tagClass(t)} tag-active` : `tag ${tagClass(t)}`;
   const title = active ? `Remove '${x(t)}' filter` : `Filter by '${x(t)}'`;
   return `<span class="${cls}" onclick="filterByTag(event,'${x(t)}')" style="cursor:pointer" title="${title}">${x(t)}</span>`;
 }
