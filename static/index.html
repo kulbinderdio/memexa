@@ -400,6 +400,7 @@ button:disabled { opacity: .45; cursor: not-allowed; }
   letter-spacing: 0.2px;
   border: 1px solid transparent;
 }
+.tag-active { outline: 2px solid currentColor; outline-offset: 1px; }
 .tag-indigo { background: var(--accent-bg);  color: var(--accent);  border-color: var(--accent-dim); }
 .tag-purple { background: var(--purple-bg);  color: var(--purple);  border-color: rgba(124,58,237,.15); }
 .tag-teal   { background: var(--teal-bg);    color: var(--teal);    border-color: rgba(13,148,136,.15); }
@@ -1611,10 +1612,7 @@ button:disabled { opacity: .45; cursor: not-allowed; }
   <section class="view active" id="view-library">
     <div class="topbar">
       <span class="topbar-title">Library</span>
-      <span id="lib-tag-filter" style="display:none;align-items:center;gap:6px;background:var(--accent-bg);border:1px solid var(--accent-dim);border-radius:99px;padding:3px 10px;font-size:12px;color:var(--accent);font-weight:500;">
-        <span id="lib-tag-filter-label"></span>
-        <button onclick="clearTagFilter()" style="font-size:14px;line-height:1;color:var(--accent);opacity:.7;" title="Clear filter">×</button>
-      </span>
+      <span id="lib-tag-filters" style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;"></span>
       <span class="topbar-sub" id="lib-count-label"></span>
     </div>
     <div class="split">
@@ -1911,7 +1909,7 @@ const state = {
   view: 'library',
   items: [],
   selectedItemId: null,
-  tagFilter: null,
+  tagFilters: [],
   searchResults: [],
   searchSelId: null,
   mapDots: [],
@@ -1969,18 +1967,17 @@ function updateLibraryBadge() {
 function renderLibraryList() {
   const el = document.getElementById('lib-list');
 
-  // Update filter chip visibility
-  const filterChip = document.getElementById('lib-tag-filter');
-  const filterLabel = document.getElementById('lib-tag-filter-label');
-  if (state.tagFilter) {
-    filterLabel.textContent = state.tagFilter;
-    filterChip.style.display = 'inline-flex';
-  } else {
-    filterChip.style.display = 'none';
-  }
+  // Render active filter chips in topbar
+  const filtersEl = document.getElementById('lib-tag-filters');
+  filtersEl.innerHTML = state.tagFilters.map(t =>
+    `<span style="display:inline-flex;align-items:center;gap:4px;background:var(--accent-bg);border:1px solid var(--accent-dim);border-radius:99px;padding:2px 8px 2px 10px;font-size:12px;color:var(--accent);font-weight:500;">
+      ${x(t)}
+      <button onclick="clearTagFilter('${x(t)}')" style="font-size:14px;line-height:1;color:var(--accent);opacity:.6;padding:0 2px;" title="Remove">×</button>
+    </span>`
+  ).join('');
 
-  const visible = state.tagFilter
-    ? state.items.filter(i => i.tags.includes(state.tagFilter))
+  const visible = state.tagFilters.length
+    ? state.items.filter(i => state.tagFilters.every(f => i.tags.includes(f)))
     : state.items;
 
   if (!state.items.length) {
@@ -1995,7 +1992,7 @@ function renderLibraryList() {
     el.innerHTML = `<div class="empty-state">
       <div class="empty-state-icon">🏷️</div>
       <div class="empty-state-title">No matches</div>
-      <div class="empty-state-sub">No articles tagged "${x(state.tagFilter)}"</div>
+      <div class="empty-state-sub">No articles match all selected tags</div>
     </div>`;
     return;
   }
@@ -2816,18 +2813,30 @@ function tagColor(text) {
 }
 
 function renderTag(t) {
-  return `<span class="tag ${tagColor(t)}" onclick="filterByTag(event,'${x(t)}')" style="cursor:pointer" title="Filter by '${x(t)}'">${x(t)}</span>`;
+  const active = state.tagFilters.includes(t);
+  const cls = active ? `tag ${tagColor(t)} tag-active` : `tag ${tagColor(t)}`;
+  const title = active ? `Remove '${x(t)}' filter` : `Filter by '${x(t)}'`;
+  return `<span class="${cls}" onclick="filterByTag(event,'${x(t)}')" style="cursor:pointer" title="${title}">${x(t)}</span>`;
 }
 
 function filterByTag(event, tag) {
   event.stopPropagation();
-  state.tagFilter = tag;
+  const idx = state.tagFilters.indexOf(tag);
+  if (idx >= 0) {
+    state.tagFilters.splice(idx, 1);
+  } else {
+    state.tagFilters.push(tag);
+  }
   if (state.view !== 'library') showView('library');
   renderLibraryList();
 }
 
-function clearTagFilter() {
-  state.tagFilter = null;
+function clearTagFilter(tag) {
+  if (tag) {
+    state.tagFilters = state.tagFilters.filter(t => t !== tag);
+  } else {
+    state.tagFilters = [];
+  }
   renderLibraryList();
 }
 
