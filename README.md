@@ -32,7 +32,9 @@ No more link graveyards. No more guilt about the things you meant to read.
 - **Semantic search** — find items by meaning, not just keywords, using vector embeddings
 - **Knowledge map** — a 2D visual map of your library where semantically similar items cluster together
 - **AI synthesis** — ask a question across your entire library and get a grounded answer with source citations
+- **Weekly digest** — generate an on-demand AI narrative of each week's reading, with links back to every source article
 - **Activity feed** — see every ingestion attempt, retry failures, and clear the log
+- **Smart extraction** — trafilatura strips ads, navigation, and boilerplate to extract clean article text; Playwright headless Chromium handles JavaScript-rendered pages; archive.ph is an optional fallback for paywalled content
 - **Local-first** — runs entirely on your machine; your data never leaves unless you choose a cloud LLM
 - **Multi-provider LLM** — works with Ollama (local), OpenAI, or Claude
 
@@ -88,7 +90,7 @@ No more link graveyards. No more guilt about the things you meant to read.
 Every URL passes through the same pipeline:
 
 1. **Duplicate check** — look up the URL in SQLite; skip if already saved
-2. **Extraction** — `httpx` fetches the page with realistic browser headers and `BeautifulSoup` extracts the article text. If fewer than 500 characters are recovered (JavaScript-rendered pages, SPAs), a headless **Playwright** Chromium instance fetches and renders the page fully. JSON-LD structured data and Open Graph meta tags are used as a further fallback for paywalled or thin pages.
+2. **Extraction** — `httpx` fetches the page with realistic browser headers and **trafilatura** extracts clean article text, stripping ads, navigation, and boilerplate automatically. If fewer than 500 characters are recovered (JavaScript-rendered pages, SPAs), a headless **Playwright** Chromium instance fetches and renders the page fully before re-running trafilatura. If archive fallback is enabled in Settings, a final attempt is made against the most recent **archive.ph** snapshot.
 3. **Embedding** — the title + first 1 200 characters are sent to the embed model (default: `mxbai-embed-large` via Ollama). The resulting float vector is packed into a compact binary blob and stored in SQLite.
 4. **Summarisation** — the full article text is sent to the chat model (default: `gemma3:4b` via Ollama) with a prompt that asks for a 2–4 sentence summary and 3–7 keyword tags, returned as JSON.
 5. **Save** — the item (title, summary, content, tags, embedding) is written to SQLite and broadcast to all connected browsers over **Server-Sent Events**.
@@ -96,6 +98,16 @@ Every URL passes through the same pipeline:
 ### Database schema
 
 ```sql
+-- AI-generated weekly digest summaries
+CREATE TABLE weekly_digests (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    week_start  DATE NOT NULL UNIQUE,  -- Monday of the week (YYYY-MM-DD)
+    week_end    DATE NOT NULL,
+    summary     TEXT,                  -- LLM-generated narrative
+    item_count  INTEGER,
+    created_at  DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Saved knowledge items
 CREATE TABLE items (
     id             TEXT PRIMARY KEY,
@@ -149,7 +161,7 @@ The server maintains an SSE (Server-Sent Events) endpoint at `/api/events`. The 
 |---|---|
 | Backend | Python 3.12, FastAPI, Uvicorn |
 | Database | SQLite via aiosqlite |
-| Web scraping | httpx, BeautifulSoup4 |
+| Web scraping | httpx, trafilatura |
 | JS rendering | Playwright (Chromium headless) |
 | PDF extraction | pypdf |
 | LLM (local) | Ollama (`mxbai-embed-large` + `gemma3:4b`) |
