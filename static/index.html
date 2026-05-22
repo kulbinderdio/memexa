@@ -1611,6 +1611,10 @@ button:disabled { opacity: .45; cursor: not-allowed; }
   <section class="view active" id="view-library">
     <div class="topbar">
       <span class="topbar-title">Library</span>
+      <span id="lib-tag-filter" style="display:none;align-items:center;gap:6px;background:var(--accent-bg);border:1px solid var(--accent-dim);border-radius:99px;padding:3px 10px;font-size:12px;color:var(--accent);font-weight:500;">
+        <span id="lib-tag-filter-label"></span>
+        <button onclick="clearTagFilter()" style="font-size:14px;line-height:1;color:var(--accent);opacity:.7;" title="Clear filter">×</button>
+      </span>
       <span class="topbar-sub" id="lib-count-label"></span>
     </div>
     <div class="split">
@@ -1907,6 +1911,7 @@ const state = {
   view: 'library',
   items: [],
   selectedItemId: null,
+  tagFilter: null,
   searchResults: [],
   searchSelId: null,
   mapDots: [],
@@ -1963,6 +1968,21 @@ function updateLibraryBadge() {
 
 function renderLibraryList() {
   const el = document.getElementById('lib-list');
+
+  // Update filter chip visibility
+  const filterChip = document.getElementById('lib-tag-filter');
+  const filterLabel = document.getElementById('lib-tag-filter-label');
+  if (state.tagFilter) {
+    filterLabel.textContent = state.tagFilter;
+    filterChip.style.display = 'inline-flex';
+  } else {
+    filterChip.style.display = 'none';
+  }
+
+  const visible = state.tagFilter
+    ? state.items.filter(i => i.tags.includes(state.tagFilter))
+    : state.items;
+
   if (!state.items.length) {
     el.innerHTML = `<div class="empty-state">
       <div class="empty-state-icon">📭</div>
@@ -1971,7 +1991,15 @@ function renderLibraryList() {
     </div>`;
     return;
   }
-  el.innerHTML = state.items.map(item => {
+  if (!visible.length) {
+    el.innerHTML = `<div class="empty-state">
+      <div class="empty-state-icon">🏷️</div>
+      <div class="empty-state-title">No matches</div>
+      <div class="empty-state-sub">No articles tagged "${x(state.tagFilter)}"</div>
+    </div>`;
+    return;
+  }
+  el.innerHTML = visible.map(item => {
     const host = tryHost(item.url);
     const sel = state.selectedItemId === item.id;
     return `<div class="item-card${sel ? ' selected' : ''}" data-id="${item.id}" onclick="selectItem(this.dataset.id,'lib')">
@@ -2788,7 +2816,19 @@ function tagColor(text) {
 }
 
 function renderTag(t) {
-  return `<span class="tag ${tagColor(t)}">${x(t)}</span>`;
+  return `<span class="tag ${tagColor(t)}" onclick="filterByTag(event,'${x(t)}')" style="cursor:pointer" title="Filter by '${x(t)}'">${x(t)}</span>`;
+}
+
+function filterByTag(event, tag) {
+  event.stopPropagation();
+  state.tagFilter = tag;
+  if (state.view !== 'library') showView('library');
+  renderLibraryList();
+}
+
+function clearTagFilter() {
+  state.tagFilter = null;
+  renderLibraryList();
 }
 
 function tryHost(url) {
