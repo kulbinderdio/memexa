@@ -393,15 +393,19 @@ button:disabled { opacity: .45; cursor: not-allowed; }
 .tag {
   display: inline-flex;
   align-items: center;
-  padding: 2px 7px;
-  background: transparent;
-  color: var(--text-3);
-  border-radius: 3px;
+  padding: 2px 8px;
+  border-radius: 99px;
   font-size: 10.5px;
   font-weight: 500;
   letter-spacing: 0.2px;
-  border: 1px solid var(--border-2);
+  border: 1px solid transparent;
 }
+.tag-indigo { background: var(--accent-bg);  color: var(--accent);  border-color: var(--accent-dim); }
+.tag-purple { background: var(--purple-bg);  color: var(--purple);  border-color: rgba(124,58,237,.15); }
+.tag-teal   { background: var(--teal-bg);    color: var(--teal);    border-color: rgba(13,148,136,.15); }
+.tag-green  { background: var(--green-bg);   color: var(--green);   border-color: rgba(22,163,74,.15); }
+.tag-orange { background: var(--orange-bg);  color: var(--orange);  border-color: rgba(249,115,22,.15); }
+.tag-amber  { background: var(--amber-bg);   color: var(--amber);   border-color: rgba(217,119,6,.15); }
 
 /* ── Status badges ───────────────────────────────────────────────────────── */
 .badge {
@@ -1978,7 +1982,7 @@ function renderLibraryList() {
       </div>
       ${item.summary ? `<div class="card-summary">${x(item.summary)}</div>` : ''}
       <div class="card-footer">
-        ${item.tags.slice(0, 3).map(t => `<span class="tag">${x(t)}</span>`).join('')}
+        ${item.tags.slice(0, 3).map(renderTag).join('')}
         <span class="card-time">${relTime(item.createdAt)}</span>
       </div>
     </div>`;
@@ -2012,7 +2016,7 @@ function renderDetail(item, container, showActions) {
   const host = tryHost(item.url);
   const pdf = isPDF(item.url);
   const pdfId = pdf ? pdfItemId(item.url) : null;
-  const tags = (item.tags || []).slice(0, 3).map(t => `<span class="tag">${x(t)}</span>`).join('');
+  const tags = (item.tags || []).slice(0, 3).map(renderTag).join('');
 
   if (pdf) {
     // Turn the pane itself into a flex column so the iframe gets flex:1 against a definite height
@@ -2147,7 +2151,7 @@ function renderSearchResults() {
       </div>
       ${item.summary ? `<div class="card-summary" style="margin-top:4px">${x(item.summary)}</div>` : ''}
       <div class="card-footer" style="margin-top:6px">
-        ${item.tags.slice(0, 3).map(t => `<span class="tag">${x(t)}</span>`).join('')}
+        ${item.tags.slice(0, 3).map(renderTag).join('')}
       </div>
     </div>`;
   }).join('');
@@ -2774,6 +2778,17 @@ function copyText(text) {
 // ── Utility ────────────────────────────────────────────────────────────────
 function x(s) {
   return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function tagColor(text) {
+  const palette = ['indigo','purple','teal','green','orange','amber'];
+  let h = 0;
+  for (let i = 0; i < text.length; i++) h = (h * 31 + text.charCodeAt(i)) >>> 0;
+  return 'tag-' + palette[h % palette.length];
+}
+
+function renderTag(t) {
+  return `<span class="tag ${tagColor(t)}">${x(t)}</span>`;
 }
 
 function tryHost(url) {
