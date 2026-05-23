@@ -147,8 +147,8 @@ _ingest_queue: asyncio.Queue = asyncio.Queue()
 
 
 _UNSUPPORTED_HOSTS = {
-    # Google non-article content
-    "share.google", "photos.google.com", "maps.google.com", "maps.google.co.uk",
+    # Google non-article content (share.google is a general shortener — allowed)
+    "photos.google.com", "maps.google.com", "maps.google.co.uk",
     "drive.google.com", "docs.google.com", "sheets.google.com", "slides.google.com",
     "meet.google.com", "calendar.google.com",
     # Social / media
@@ -159,7 +159,6 @@ _UNSUPPORTED_HOSTS = {
 }
 
 _UNSUPPORTED_REASONS: dict[str, str] = {
-    "share.google": "Google share links point to photos or maps — no article text to extract",
     "photos.google.com": "Google Photos contains images, not article text",
     "maps.google.com": "Google Maps has no article text to extract",
     "drive.google.com": "Google Drive requires authentication — use direct PDF upload instead",
