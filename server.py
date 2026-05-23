@@ -32,6 +32,7 @@ from db import (
     delete_log_entry,
     fetch_all_digests,
     fetch_all_items,
+    fetch_all_items_with_content,
     fetch_digest,
     fetch_item,
     fetch_item_by_url,
@@ -46,6 +47,7 @@ from db import (
     save_log,
     text_search,
     unpack_embedding,
+    update_item_embedding,
     update_item_status,
     update_setting,
 )
@@ -936,6 +938,97 @@ async def update_settings_route(body: dict) -> JSONResponse:
             await telegram_poller.stop()
 
     return JSONResponse(_mask_settings(new_settings))
+
+
+# ---------------------------------------------------------------------------
+# Routes: export / import
+# ---------------------------------------------------------------------------
+
+@app.get("/api/export")
+async def export_items() -> Response:
+    items = await fetch_all_items_with_content()
+    payload = {
+        "version": 1,
+        "exported_at": _dt.datetime.now(_dt.timezone.utc).isoformat(),
+        "items": [
+            {
+                "url": r["url"],
+                "title": r.get("title") or "",
+                "summary": r.get("summary") or "",
+                "tags": json.loads(r.get("tags_json") or "[]"),
+                "status": r.get("status", "unread"),
+                "created_at": r.get("created_at") or "",
+                "content": r.get("content") or "",
+            }
+            for r in items
+        ],
+    }
+    data = json.dumps(payload, ensure_ascii=False, indent=2)
+    filename = f"memexa-export-{_dt.date.today()}.json"
+    return Response(
+        content=data.encode(),
+        media_type="application/json",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+async def _embed_imported_item(item_id: str, title: str, content: str) -> None:
+    try:
+        provider = await get_provider()
+        embed_input = f"{title}\n\n{content[:1200]}"
+        embedding = await provider.embed(embed_input)
+        await update_item_embedding(item_id, pack_embedding(embedding))
+    except Exception:
+        pass  # item is still text-searchable without an embedding
+
+
+@app.post("/api/import")
+async def import_items(file: UploadFile = File(...)) -> JSONResponse:
+    try:
+        raw = await file.read()
+        payload = json.loads(raw)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid JSON file")
+
+    items_data = payload.get("items", [])
+    if not isinstance(items_data, list):
+        raise HTTPException(status_code=400, detail="Expected an 'items' array")
+
+    imported = skipped = failed = 0
+
+    for entry in items_data:
+        url = (entry.get("url") or "").strip()
+        if not url:
+            failed += 1
+            continue
+
+        if await fetch_item_by_url(url):
+            skipped += 1
+            continue
+
+        try:
+            item_id = str(uuid.uuid4())
+            tags = entry.get("tags", [])
+            item: dict = {
+                "id": item_id,
+                "url": url,
+                "title": entry.get("title") or "",
+                "summary": entry.get("summary") or "",
+                "content": entry.get("content") or "",
+                "tags_json": json.dumps(tags),
+                "embedding_data": b"",
+                "status": entry.get("status", "unread"),
+            }
+            await save_item(item)
+            asyncio.create_task(_embed_imported_item(item_id, item["title"], item["content"]))
+            await save_log(url, "import", "success", title=item["title"])
+            imported += 1
+        except Exception as exc:
+            failed += 1
+            await save_log(url, "import", "failed", error=str(exc))
+
+    await event_bus.publish({"type": "import_complete", "imported": imported, "skipped": skipped})
+    return JSONResponse({"imported": imported, "skipped": skipped, "failed": failed})
 
 
 # ---------------------------------------------------------------------------

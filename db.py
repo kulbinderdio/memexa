@@ -338,6 +338,24 @@ async def fetch_all_digests() -> list[dict]:
     return [_row_to_dict(r) for r in rows]
 
 
+async def fetch_all_items_with_content() -> list[dict]:
+    """Return all items including content, ordered newest first."""
+    async with aiosqlite.connect(_db_path()) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            "SELECT id, url, title, summary, content, tags_json, status, created_at "
+            "FROM items ORDER BY created_at DESC"
+        ) as cur:
+            rows = await cur.fetchall()
+    return [_row_to_dict(r) for r in rows]
+
+
+async def update_item_embedding(id: str, embedding_data: bytes) -> None:
+    async with aiosqlite.connect(_db_path()) as db:
+        await db.execute("UPDATE items SET embedding_data=? WHERE id=?", (embedding_data, id))
+        await db.commit()
+
+
 async def fetch_items_with_embeddings() -> list[dict]:
     """Return all items that have a non-empty embedding_data blob.
 

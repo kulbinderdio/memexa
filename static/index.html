@@ -1838,6 +1838,24 @@ button:disabled { opacity: .45; cursor: not-allowed; }
         </label>
       </div>
     </div>
+    <div class="settings-section">
+      <div class="settings-section-title">Data</div>
+      <div class="settings-row" style="align-items:center">
+        <div>
+          <div class="settings-row-label">Export library</div>
+          <div class="settings-row-sub">Download all items as a JSON file</div>
+        </div>
+        <button class="btn btn-ghost" onclick="exportLibrary()">Export JSON</button>
+      </div>
+      <div class="settings-row" style="align-items:center">
+        <div>
+          <div class="settings-row-label">Import library</div>
+          <div class="settings-row-sub">Restore items from a Memexa JSON export</div>
+        </div>
+        <button class="btn btn-ghost" id="import-btn" onclick="document.getElementById('import-file').click()">Import JSON</button>
+        <input type="file" id="import-file" accept=".json" style="display:none" onchange="importLibrary(event)">
+      </div>
+    </div>
   </div>
   <div class="settings-footer">
     <button class="btn btn-ghost" style="flex:1" onclick="closeSettings()">Cancel</button>
@@ -2611,6 +2629,42 @@ async function saveSettings() {
 
   if (res) { toast('Settings saved ✓', 'success'); closeSettings(); }
   else toast('Failed to save settings', 'error');
+}
+
+// ── Export / Import ────────────────────────────────────────────────────────
+
+function exportLibrary() {
+  window.location.href = '/api/export';
+}
+
+async function importLibrary(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  event.target.value = '';
+  const btn = document.getElementById('import-btn');
+  btn.disabled = true;
+  btn.textContent = 'Importing…';
+  try {
+    const fd = new FormData();
+    fd.append('file', file);
+    const res = await fetch('/api/import', { method: 'POST', body: fd });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      toast(err.detail || 'Import failed', 'error');
+      return;
+    }
+    const data = await res.json();
+    const msg = `Imported ${data.imported} item${data.imported !== 1 ? 's' : ''}` +
+      (data.skipped ? ` · ${data.skipped} skipped` : '') +
+      (data.failed ? ` · ${data.failed} failed` : '');
+    toast(msg, data.failed ? 'error' : 'success');
+    loadLibrary();
+  } catch (err) {
+    toast('Import failed: ' + err.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Import JSON';
+  }
 }
 
 // ── Add URL modal ──────────────────────────────────────────────────────────
