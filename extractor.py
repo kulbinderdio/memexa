@@ -215,7 +215,7 @@ def _trafilatura_parse(html: str, url: str) -> ExtractedContent | None:
     if len(html.encode("utf-8", errors="replace")) > _MAX_BODY_BYTES:
         html = html[:_MAX_BODY_BYTES]
 
-    # bare_extraction returns a dict with text, title, author, etc.
+    # bare_extraction returns a dict (<2.0) or a Document object (2.0+)
     data = trafilatura.bare_extraction(
         html,
         url=url,
@@ -226,8 +226,12 @@ def _trafilatura_parse(html: str, url: str) -> ExtractedContent | None:
     )
 
     if data:
-        text = (data.get("text") or "").strip()
-        title = (data.get("title") or "").strip() or _bs_title(html, url)
+        if isinstance(data, dict):
+            text = (data.get("text") or "").strip()
+            title = (data.get("title") or "").strip() or _bs_title(html, url)
+        else:
+            text = (getattr(data, "text", None) or "").strip()
+            title = (getattr(data, "title", None) or "").strip() or _bs_title(html, url)
         if text:
             return ExtractedContent(title=title, text=text)
 
