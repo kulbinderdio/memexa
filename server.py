@@ -146,9 +146,58 @@ event_bus = EventBus()
 _ingest_queue: asyncio.Queue = asyncio.Queue()
 
 
+_UNSUPPORTED_HOSTS = {
+    # Google non-article content
+    "share.google", "photos.google.com", "maps.google.com", "maps.google.co.uk",
+    "drive.google.com", "docs.google.com", "sheets.google.com", "slides.google.com",
+    "meet.google.com", "calendar.google.com",
+    # Social / media
+    "twitter.com", "x.com", "instagram.com", "tiktok.com",
+    "youtube.com", "youtu.be", "vimeo.com", "twitch.tv",
+    # File / binary
+    "github.com",  # repo pages (not README articles)
+}
+
+_UNSUPPORTED_REASONS: dict[str, str] = {
+    "share.google": "Google share links point to photos or maps — no article text to extract",
+    "photos.google.com": "Google Photos contains images, not article text",
+    "maps.google.com": "Google Maps has no article text to extract",
+    "drive.google.com": "Google Drive requires authentication — use direct PDF upload instead",
+    "docs.google.com": "Google Docs requires authentication — export as PDF and upload instead",
+    "youtube.com": "YouTube videos have no article text — try a transcript URL instead",
+    "youtu.be": "YouTube videos have no article text — try a transcript URL instead",
+    "twitter.com": "Twitter/X threads rarely have enough text for meaningful extraction",
+    "x.com": "Twitter/X threads rarely have enough text for meaningful extraction",
+    "instagram.com": "Instagram requires login to access content",
+    "tiktok.com": "TikTok is video content with no article text",
+    "github.com": "GitHub repo pages are code, not articles — link to a specific README or blog post instead",
+}
+
+
+def _unsupported_reason(url: str) -> str | None:
+    try:
+        from urllib.parse import urlparse
+        host = urlparse(url).hostname or ""
+        # strip www.
+        host = host.removeprefix("www.")
+        for blocked in _UNSUPPORTED_HOSTS:
+            if host == blocked or host.endswith("." + blocked):
+                return _UNSUPPORTED_REASONS.get(blocked, f"'{blocked}' is not a supported article source")
+    except Exception:
+        pass
+    return None
+
+
 async def process_url(url: str, source: str = "manual") -> None:
     """Full ingestion pipeline for a single URL."""
-    # 1. Duplicate check — skip silently for retries so the old failed entry
+    # 1. Reject known non-article URLs immediately
+    reason = _unsupported_reason(url)
+    if reason:
+        await save_log(url, source, "failed", error=reason)
+        await event_bus.publish({"type": "ingestion_failed", "url": url, "error": reason})
+        return
+
+    # 2. Duplicate check — skip silently for retries so the old failed entry
     #    doesn't get joined by a spurious "Duplicate URL" log entry.
     if await fetch_item_by_url(url):
         if source != "retry":
