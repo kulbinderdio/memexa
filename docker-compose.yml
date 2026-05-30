@@ -1,5 +1,18 @@
 services:
 
+  # ── Ollama ─────────────────────────────────────────────────────────────────
+  ollama:
+    image: ollama/ollama:latest
+    restart: unless-stopped
+    volumes:
+      - ollama-models:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
   # ── Memexa web app ─────────────────────────────────────────────────────────
   memexa:
     build: .
@@ -9,12 +22,13 @@ services:
     volumes:
       - memexa-data:/root/.memexa-web
     environment:
-      - OLLAMA_BASE_URL=http://host.docker.internal:11434
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+      - OLLAMA_BASE_URL=http://ollama:11434
     dns:
       - 8.8.8.8
       - 1.1.1.1
+    depends_on:
+      ollama:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:7700/"]
       interval: 15s
@@ -25,3 +39,4 @@ services:
 # ── Named volumes (persistent across restarts) ─────────────────────────────
 volumes:
   memexa-data:     # SQLite database + uploaded PDFs
+  ollama-models:   # Downloaded Ollama models (~4–8 GB)
