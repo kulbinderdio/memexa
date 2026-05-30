@@ -4,8 +4,6 @@ services:
   ollama:
     image: ollama/ollama:latest
     restart: unless-stopped
-    ports:
-      - "11434:11434"
     volumes:
       - ollama-models:/root/.ollama
     healthcheck:
