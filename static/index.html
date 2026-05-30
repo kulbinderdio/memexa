@@ -1966,7 +1966,7 @@ function showView(name) {
 
 // ── Library ────────────────────────────────────────────────────────────────
 async function loadLibrary() {
-  const res = await api('/api/items');
+  const res = await api('/api/items', { silent: true });
   if (!res) return;
   state.items = res;
   renderLibraryList();
@@ -2489,7 +2489,7 @@ new ResizeObserver(() => { if (state.view === 'map' && state.mapItems.length) re
 
 // ── Feed ───────────────────────────────────────────────────────────────────
 async function loadFeed() {
-  const data = await api('/api/feed');
+  const data = await api('/api/feed', { silent: true });
   if (!data) return;
   state.feedLog = data;
   renderFeed();
@@ -2833,7 +2833,7 @@ async function api(path, opts = {}) {
   try {
     return await apiFetch(path, opts);
   } catch (err) {
-    toast('Network error: ' + err.message, 'error');
+    if (!opts.silent) toast('Network error: ' + err.message, 'error');
     return null;
   }
 }
