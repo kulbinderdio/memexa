@@ -491,8 +491,9 @@ _SENSITIVE_KEYS = {"openai_api_key", "claude_api_key", "telegram_bot_token"}
 def _mask_settings(settings: dict) -> dict:
     masked = dict(settings)
     for k in _SENSITIVE_KEYS:
-        if k in masked and masked[k]:
-            masked[k] = _mask_key(masked[k])
+        # Return a boolean so the frontend knows whether a key is set,
+        # without ever sending a partial value back that could be re-saved.
+        masked[k] = bool(masked.get(k))
     return masked
 
 
@@ -920,24 +921,29 @@ async def get_settings_route() -> JSONResponse:
 
 @app.put("/api/settings")
 async def update_settings_route(body: dict) -> JSONResponse:
-    old_settings = await database.get_settings()
-    old_token = old_settings.get("telegram_bot_token", "")
+    try:
+        old_settings = await database.get_settings()
+        old_token = old_settings.get("telegram_bot_token", "")
 
-    for key, value in body.items():
-        if isinstance(value, str):
-            await update_setting(key, value)
+        for key, value in body.items():
+            # Only save string values; skip sensitive keys sent as booleans
+            # (the frontend sends True/False to indicate "already set, unchanged")
+            if isinstance(value, str) and value:
+                await update_setting(key, value)
 
-    new_settings = await database.get_settings()
-    new_token = new_settings.get("telegram_bot_token", "").strip()
+        new_settings = await database.get_settings()
+        new_token = new_settings.get("telegram_bot_token", "").strip()
 
-    # Restart telegram poller if token changed
-    if new_token != old_token.strip():
-        if new_token:
-            await telegram_poller.restart(new_token)
-        else:
-            await telegram_poller.stop()
+        # Restart telegram poller if token changed
+        if new_token != old_token.strip():
+            if new_token:
+                await telegram_poller.restart(new_token)
+            else:
+                await telegram_poller.stop()
 
-    return JSONResponse(_mask_settings(new_settings))
+        return JSONResponse(_mask_settings(new_settings))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
 # ---------------------------------------------------------------------------

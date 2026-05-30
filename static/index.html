@@ -2588,11 +2588,14 @@ async function loadSettings() {
   document.getElementById('s-ollama-url').value   = s.ollama_base_url || '';
   document.getElementById('s-ollama-chat').value  = s.ollama_chat_model || '';
   document.getElementById('s-ollama-embed').value = s.ollama_embed_model || '';
-  document.getElementById('s-openai-key').value   = s.openai_api_key || '';
+  document.getElementById('s-openai-key').value   = '';
+  document.getElementById('s-openai-key').placeholder = s.openai_api_key ? '(already set — paste new key to change)' : '';
   document.getElementById('s-openai-model').value = s.openai_model || '';
-  document.getElementById('s-claude-key').value   = s.claude_api_key || '';
+  document.getElementById('s-claude-key').value   = '';
+  document.getElementById('s-claude-key').placeholder = s.claude_api_key ? '(already set — paste new key to change)' : '';
   document.getElementById('s-claude-model').value = s.claude_model || '';
-  document.getElementById('s-telegram-token').value = s.telegram_bot_token || '';
+  document.getElementById('s-telegram-token').value = '';
+  document.getElementById('s-telegram-token').placeholder = s.telegram_bot_token ? '(already set — paste new token to change)' : '';
   document.getElementById('s-archive-fallback').checked = s.archive_fallback === 'true';
   selectProvider(s.llm_provider || 'ollama');
 }
