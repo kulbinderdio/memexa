@@ -20,7 +20,7 @@ import trafilatura
 import trafilatura.settings
 from bs4 import BeautifulSoup, Tag
 
-_MAX_BODY_BYTES = 800 * 1024
+_MAX_BODY_BYTES = 3 * 1024 * 1024
 _PW_FALLBACK_THRESHOLD = 500
 
 _BROWSER_HEADERS = {
@@ -121,8 +121,8 @@ async def _playwright_extract(url: str) -> ExtractedContent | None:
         finally:
             await ctx.close()
 
-        result = _trafilatura_parse(html, url) or ExtractedContent(
-            title=_bs_title(html, url), text=""
+        result = _trafilatura_parse(html, final_url) or ExtractedContent(
+            title=_bs_title(html, final_url), text=""
         )
         result.via_browser = True
         result.final_url = final_url
