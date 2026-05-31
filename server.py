@@ -215,7 +215,13 @@ async def process_url(url: str, source: str = "manual") -> None:
         title = extracted.title
         text = extracted.text
 
-        # 3. Minimum content check
+        # 3. Check if redirect landed on an unsupported host
+        if extracted.final_url and extracted.final_url != url:
+            redirect_reason = _unsupported_reason(extracted.final_url)
+            if redirect_reason:
+                raise ValueError(redirect_reason)
+
+        # 4. Minimum content check
         if len(text) < 150:
             raise ValueError(f"Insufficient content ({len(text)} chars)")
 

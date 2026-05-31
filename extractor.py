@@ -66,6 +66,7 @@ class ExtractedContent:
     title: str
     text: str
     via_browser: bool = False
+    final_url: str = ""
 
 
 # ---------------------------------------------------------------------------
@@ -116,12 +117,14 @@ async def _playwright_extract(url: str) -> ExtractedContent | None:
                     continue
 
             html = await page.content()
+            final_url = page.url
         finally:
             await ctx.close()
 
         result = _trafilatura_parse(html, url)
         if result:
             result.via_browser = True
+            result.final_url = final_url
         return result
     except Exception as exc:
         print(f"[playwright] failed for {url}: {exc}", file=sys.stderr)
@@ -174,9 +177,12 @@ async def extract(url: str, use_archive: bool = False) -> ExtractedContent:
     if response.status_code >= 500:
         raise ValueError(f"Server error ({response.status_code}): {url}")
 
+    httpx_final_url = str(response.url)
+
     fast = _trafilatura_parse(response.text, url)
 
     if fast and len(fast.text) >= _PW_FALLBACK_THRESHOLD:
+        fast.final_url = httpx_final_url
         return fast
 
     fast_len = len(fast.text) if fast else 0
@@ -198,7 +204,10 @@ async def extract(url: str, use_archive: bool = False) -> ExtractedContent:
             print(f"[extractor] archive got {len(archived.text)} chars", file=sys.stderr)
             return archived
 
-    return best_so_far or ExtractedContent(title=_bs_title(response.text, url), text="")
+    result = best_so_far or ExtractedContent(title=_bs_title(response.text, url), text="")
+    if not result.final_url:
+        result.final_url = httpx_final_url
+    return result
 
 
 # Keep parse_html as a public entry point (used by Playwright path in tests)
