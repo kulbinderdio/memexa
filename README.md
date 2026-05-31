@@ -185,10 +185,10 @@ git clone https://github.com/yourusername/memexa-web.git
 cd memexa-web
 
 # Without GPU (CPU only)
-docker compose up -d
+docker compose up -d --build
 
 # With Nvidia GPU (recommended)
-docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d
+docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d --build
 ```
 
 The first run downloads `mxbai-embed-large` (~670 MB) and `gemma4:e4b` automatically in the background. A banner in the UI shows live download progress and dismisses itself once both models are ready.
@@ -222,10 +222,10 @@ All data survives container restarts and upgrades via named Docker volumes:
 
 ```bash
 # Start everything (CPU)
-docker compose up -d
+docker compose up -d --build
 
 # Start everything (Nvidia GPU)
-docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d
+docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d --build
 
 # Stop everything (data is preserved)
 docker compose down
@@ -283,7 +283,7 @@ docker run --rm \
 A `docker-compose.gpu.yml` override is included. Start with it layered on top of the base compose file:
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d
+docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d --build
 ```
 
 This passes all Nvidia GPUs through to the Ollama container. Make sure the [Nvidia Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html) is installed on the host first.
