@@ -443,17 +443,9 @@ async def _auto_pull_missing_models() -> None:
 # ---------------------------------------------------------------------------
 
 
-async def _migrate_settings() -> None:
-    """Fix settings left over from older versions."""
-    settings = await database.get_settings()
-    if settings.get("ollama_chat_model", "").startswith("gemma4"):
-        await database.update_setting("ollama_chat_model", "gemma3:4b")
-
-
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     await init_db()
-    await _migrate_settings()
     asyncio.create_task(ingestion_worker(), name="ingestion-worker")
     asyncio.create_task(_auto_pull_missing_models(), name="model-puller")
 

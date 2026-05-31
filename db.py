@@ -17,7 +17,7 @@ _DB_PATH = _DB_DIR / "data.db"
 _DEFAULT_SETTINGS: dict[str, str] = {
     "llm_provider": "ollama",
     "ollama_base_url": "http://ollama:11434",
-    "ollama_chat_model": "gemma4:latest",
+    "ollama_chat_model": "gemma4:12b",
     "ollama_embed_model": "mxbai-embed-large",
     "openai_api_key": "",
     "openai_model": "gpt-4o-mini",
