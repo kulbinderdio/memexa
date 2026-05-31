@@ -121,10 +121,11 @@ async def _playwright_extract(url: str) -> ExtractedContent | None:
         finally:
             await ctx.close()
 
-        result = _trafilatura_parse(html, url)
-        if result:
-            result.via_browser = True
-            result.final_url = final_url
+        result = _trafilatura_parse(html, url) or ExtractedContent(
+            title=_bs_title(html, url), text=""
+        )
+        result.via_browser = True
+        result.final_url = final_url
         return result
     except Exception as exc:
         print(f"[playwright] failed for {url}: {exc}", file=sys.stderr)
@@ -205,7 +206,10 @@ async def extract(url: str, use_archive: bool = False) -> ExtractedContent:
             return archived
 
     result = best_so_far or ExtractedContent(title=_bs_title(response.text, url), text="")
-    if not result.final_url:
+    # Playwright follows JS redirects so its final_url is more accurate than httpx's
+    if pw and pw.final_url:
+        result.final_url = pw.final_url
+    elif not result.final_url:
         result.final_url = httpx_final_url
     return result
 
