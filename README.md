@@ -92,7 +92,7 @@ Every URL passes through the same pipeline:
 1. **Duplicate check** — look up the URL in SQLite; skip if already saved
 2. **Extraction** — `httpx` fetches the page with realistic browser headers and **trafilatura** extracts clean article text, stripping ads, navigation, and boilerplate automatically. If fewer than 500 characters are recovered (JavaScript-rendered pages, SPAs), a headless **Playwright** Chromium instance fetches and renders the page fully before re-running trafilatura. If archive fallback is enabled in Settings, a final attempt is made against the most recent **archive.ph** snapshot.
 3. **Embedding** — the title + first 1 200 characters are sent to the embed model (default: `mxbai-embed-large` via Ollama). The resulting float vector is packed into a compact binary blob and stored in SQLite.
-4. **Summarisation** — the full article text is sent to the chat model (default: `gemma3:4b` via Ollama) with a prompt that asks for a 2–4 sentence summary and 3–7 keyword tags, returned as JSON.
+4. **Summarisation** — the full article text is sent to the chat model (default: `gemma4:e4b` via Ollama) with a prompt that asks for a 2–4 sentence summary and 3–7 keyword tags, returned as JSON.
 5. **Save** — the item (title, summary, content, tags, embedding) is written to SQLite and broadcast to all connected browsers over **Server-Sent Events**.
 
 ### Database schema
@@ -164,7 +164,7 @@ The server maintains an SSE (Server-Sent Events) endpoint at `/api/events`. The 
 | Web scraping | httpx, trafilatura |
 | JS rendering | Playwright (Chromium headless) |
 | PDF extraction | pypdf |
-| LLM (local) | Ollama (`mxbai-embed-large` + `gemma3:4b`) |
+| LLM (local) | Ollama (`mxbai-embed-large` + `gemma4:e4b`) |
 | LLM (cloud) | OpenAI API, Anthropic Claude API |
 | Embeddings | NumPy (cosine similarity, PCA) |
 | Messaging | Telegram Bot API |
@@ -183,10 +183,15 @@ The easiest way to run Memexa. Ollama, all models, and the app start together.
 ```bash
 git clone https://github.com/yourusername/memexa-web.git
 cd memexa-web
+
+# Without GPU (CPU only)
 docker compose up -d
+
+# With Nvidia GPU (recommended)
+docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d
 ```
 
-The first run downloads `mxbai-embed-large` (~670 MB) and `gemma3:4b` (~2.5 GB) automatically in the background. A banner in the UI shows live download progress and dismisses itself once both models are ready.
+The first run downloads `mxbai-embed-large` (~670 MB) and `gemma4:e4b` automatically in the background. A banner in the UI shows live download progress and dismisses itself once both models are ready.
 
 Watch server logs if you prefer the terminal:
 
@@ -213,9 +218,14 @@ All data survives container restarts and upgrades via named Docker volumes:
 
 #### 4. Common commands
 
+> If you're using GPU, replace `docker compose` with `docker compose -f docker-compose.yml -f docker-compose.gpu.yml` in all commands below.
+
 ```bash
-# Start everything
+# Start everything (CPU)
 docker compose up -d
+
+# Start everything (Nvidia GPU)
+docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d
 
 # Stop everything (data is preserved)
 docker compose down
@@ -230,15 +240,20 @@ docker compose restart memexa
 docker compose exec memexa bash
 
 # Pull a different Ollama model
-docker compose exec ollama ollama pull llama3.2
+docker compose exec ollama ollama pull gemma4:e4b
 ```
 
 #### 5. Updating Memexa
 
 ```bash
 git pull
-docker compose build memexa
-docker compose up -d memexa
+
+# CPU
+docker compose build memexa && docker compose up -d memexa
+
+# GPU
+docker compose -f docker-compose.yml -f docker-compose.gpu.yml build memexa
+docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d memexa
 ```
 
 Your data volumes are untouched by updates.
@@ -265,17 +280,13 @@ docker run --rm \
 
 #### 7. GPU acceleration (Nvidia)
 
-Add the following to the `ollama` service in `docker-compose.yml`, then restart:
+A `docker-compose.gpu.yml` override is included. Start with it layered on top of the base compose file:
 
-```yaml
-deploy:
-  resources:
-    reservations:
-      devices:
-        - driver: nvidia
-          count: all
-          capabilities: [gpu]
+```bash
+docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d
 ```
+
+This passes all Nvidia GPUs through to the Ollama container. Make sure the [Nvidia Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html) is installed on the host first.
 
 #### 8. Troubleshooting
 
@@ -322,7 +333,7 @@ playwright install chromium
 
 ```bash
 ollama pull mxbai-embed-large   # embeddings
-ollama pull gemma3:4b              # chat / summarisation
+ollama pull gemma4:e4b             # chat / summarisation
 ```
 
 ### Run
